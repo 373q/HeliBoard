@@ -16,7 +16,7 @@
     { "$": "keyboard_state_selector", "symbols": { "label": "numpad" }},
     { "label": "space" },
     { "label": "period", "labelFlags": 1073741824 },
-    { "label": "macro_toggle", "width": 0.05, "labelFlags": 512 },
+    { "label": "macro_toggle", "type": "unspecified", "width": 0.05 },
     { "label": "action", "width": 0.15, "labelFlags": 1073741824 }
   ]
 ]
