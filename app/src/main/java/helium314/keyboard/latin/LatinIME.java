@@ -554,9 +554,10 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
-                // CODE_ENTER in InputLogic calls performEditorAction with the correct IME action
-                // (IME_ACTION_SEND, IME_ACTION_GO, etc.) for apps like Discord and Telegram.
-                // Falls back to a newline only for plain multiline fields with IME_ACTION_NONE.
+                // Commit any composing text first (chars typed one-by-one are in composing state).
+                // Without this, Discord/Telegram and other apps may not see the text as committed
+                // when performEditorAction fires.
+                mInputLogic.finishInput();
                 onCodeInput(Constants.CODE_ENTER, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
             }
             @Override
