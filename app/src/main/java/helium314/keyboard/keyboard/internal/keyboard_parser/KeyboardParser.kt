@@ -249,22 +249,12 @@ class KeyboardParser(private val params: KeyboardParams, private val context: Co
         val sv = Settings.getValues()
         if (params.mId.isAlphabetKeyboard) {
             // Pe tastatura alfabetica, scoatem comma/period din randul de jos daca hide e activ
+            // Pe tastatura de simboluri NU facem nimic — comma si period sunt deja acolo in functional_keys.json
             if (sv.mHideCommaKey) {
                 functionalKeysBottom.removeAll { it.label == KeyLabel.COMMA || it.groupId == KeyData.GROUP_COMMA }
             }
             if (sv.mHidePeriodKey) {
                 functionalKeysBottom.removeAll { it.label == KeyLabel.PERIOD || it.groupId == KeyData.GROUP_PERIOD }
-            }
-        } else if (params.mId.mElementId == KeyboardId.ELEMENT_SYMBOLS) {
-            // Pe tastatura de simboluri, adaugam comma/period langa space in randul de jos
-            val spaceIndex = functionalKeysBottom.indexOfFirst { it.label == KeyLabel.SPACE }
-            if (spaceIndex >= 0) {
-                if (sv.mHidePeriodKey) {
-                    functionalKeysBottom.add(spaceIndex + 1, TextKeyData(label = KeyLabel.PERIOD, groupId = KeyData.GROUP_PERIOD, labelFlags = 1073741824))
-                }
-                if (sv.mHideCommaKey) {
-                    functionalKeysBottom.add(spaceIndex, TextKeyData(label = KeyLabel.COMMA, groupId = KeyData.GROUP_COMMA, labelFlags = 1073741824))
-                }
             }
         }
         // add zwnj key next to space if necessary
