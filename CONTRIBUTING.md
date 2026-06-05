@@ -16,13 +16,27 @@ Some hints for finding what you're looking for:
 * Layouts: stored in `layouts` folder in assets, interpreted by `KeyboardParser` and `TextKeyData`
   * Popups: either on layouts, or in `locale_key_texts` (mostly letter variations for specific languages that are not dependent on layout)
 * Touch and swipe input handling: `PointerTracker`
-* Handling of key inputs: `InputLogic`
-* Suggestions: `DictionaryFacilitatorImpl`, `Suggest`, `InputLogic`, and `SuggestionStripView` (in order from creation to display)
-* Forwarding entered text / keys to the app / text field: `RichInputConnection`
+* Handling of keycode / text inputs: `InputLogic`
+  * chain: `PointerTracker` -> `KeyboardActionListenerImpl` -> `LatinIME` -> `InputLogic`
+* Suggestions: `DictionaryFacilitatorImpl`, `Suggest`, `InputLogic`, and `SuggestionStripView` (in order from creation to display, omitting the native library)
+* Communication with the app / text field (inputs, reading current text): `RichInputConnection`
 * Receiving events and information from the app / text field: `LatinIME`
 * Settings are in `SettingsValues`, with some functionality in `Settings` and the default values in `Default`
 
 # Guidelines
+
+Note that the maintainer only has very limited time, and thus review might take a while.
+This especially applies to large PRs (hundreds of lines), which recently started to become more common. Sorry, but there is simply not enough time to review everything.  
+What's more likely to be reviewed soon:
+* Simple changes (but depends on what effect they have, as in some places it's easy to introduce unintended changes)
+* Wanted / accepted changes (labels [_PR_](https://github.com/HeliBorg/HeliBoard/labels/PR), [_contributor needed_](https://github.com/HeliBorg/HeliBoard/issues?q=label%3A%22contributor%20needed%22), [_help wanted_](https://github.com/HeliBorg/HeliBoard/labels/help%20wanted))
+* Changes where the hard work is mostly investigation / research rather than coding
+  * e.g. compiling text lists to dictionaries, customizable icons / key backgrounds, OnePlus disabling keyboard on reboot, ...
+
+What will likely take some time (depends very much on how much other stuff is coming in):
+* Large changes (especially when connected to rather niche functionality)
+* Changes in code that is prone to introducing unintended effects
+  * `InputLogic`, `Suggest`, `RichInputConnection` are especially dangerous here, and also hard to test (behavior may depend on app and possibly OS version)
 
 ## Recommended
 
@@ -39,6 +53,8 @@ When contributing to the app, please:
 * Try making use of in-place mechanisms instead of re-inventing the wheel. Your contribution should only add as much complexity as necessary, the code is overly complicated already 😶.
 * Keep your changes to few places, as opposed to sprinkling them over many parts of the code. This helps with keeping down complexity during review, and with maintainability of the app.
 * Make a draft PR when you intend to still work on it. Submitting an unfinished PR can be a good idea when you're not sure how to best continue and would like some comments.
+* When you fix a bug without opening an issue, please provide a way to reproduce the bug (see [bug report template](.github/ISSUE_TEMPLATE/bug_report.md))
+* Noticeable adjustments (keyboard UI, default layouts, ...) should either provide a benefit for everyone, or be optional.
 
 Further things to consider (though irrelevant for most PRs):
 * APK size:

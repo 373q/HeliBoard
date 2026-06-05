@@ -402,7 +402,7 @@ private object AppUpgrade {
             }
         }
         if (oldVersion <= 2305) {
-            (prefs.all.keys.filter { it.startsWith(Settings.PREF_POPUP_KEYS_ORDER) || it.startsWith(Settings.PREF_POPUP_KEYS_LABELS_ORDER) } +
+            (prefs.all.keys.filter { it.startsWith(Settings.PREF_POPUP_KEYS_ORDER) || it.startsWith(Settings.PREF_POPUP_KEYS_HINT_ORDER) } +
                 listOf(Settings.PREF_TOOLBAR_KEYS, Settings.PREF_PINNED_TOOLBAR_KEYS, Settings.PREF_CLIPBOARD_TOOLBAR_KEYS)).forEach {
                 if (!prefs.contains(it)) return@forEach
                 val newValue = prefs.getString(it, "")!!.replace(",", Separators.KV).replace(";", Separators.ENTRY)
@@ -475,7 +475,7 @@ private object AppUpgrade {
         }
         if (oldVersion <= 2307) {
             prefs.all.keys.forEach {
-                if (!it.startsWith(Settings.PREF_POPUP_KEYS_ORDER) && !it.startsWith(Settings.PREF_POPUP_KEYS_LABELS_ORDER))
+                if (!it.startsWith(Settings.PREF_POPUP_KEYS_ORDER) && !it.startsWith(Settings.PREF_POPUP_KEYS_HINT_ORDER))
                     return@forEach
                 prefs.edit { putString(it, prefs.getString(it, "")!!.replace("popup_keys_", "")) }
             }
@@ -499,8 +499,8 @@ private object AppUpgrade {
                     }
                     prefs.edit { remove(key) }
                 }
-                if (key.startsWith(Settings.PREF_POPUP_KEYS_LABELS_ORDER+"_")) {
-                    val locale = key.substringAfter(Settings.PREF_POPUP_KEYS_LABELS_ORDER+"_").constructLocale()
+                if (key.startsWith(Settings.PREF_POPUP_KEYS_HINT_ORDER+"_")) {
+                    val locale = key.substringAfter(Settings.PREF_POPUP_KEYS_HINT_ORDER+"_").constructLocale()
                     SubtypeSettings.getEnabledSubtypes().forEach {
                         if (it.locale() == locale && !SubtypeSettings.isAdditionalSubtype(it)) {
                             SubtypeUtilsAdditional.changeAdditionalSubtype(it.toSettingsSubtype(), it.toSettingsSubtype(), context)
@@ -541,7 +541,7 @@ private object AppUpgrade {
                     "2" -> -1f
                     else -> 0.185f
                 }
-                prefs.edit { remove("auto_correction_confidence").putFloat(Settings.PREF_AUTO_CORRECT_THRESHOLD, value) }
+                prefs.edit { remove("auto_correction_confidence").putFloat("auto_correct_threshold", value) }
             }
         }
         if (oldVersion <= 2310) {
@@ -669,6 +669,26 @@ private object AppUpgrade {
                     putString(Settings.PREF_SPACE_HORIZONTAL_SWIPE, prefs.getString(Settings.PREF_SPACE_HORIZONTAL_SWIPE, "")!!.uppercase())
                 if (prefs.contains(Settings.PREF_SPACE_VERTICAL_SWIPE))
                     putString(Settings.PREF_SPACE_VERTICAL_SWIPE, prefs.getString(Settings.PREF_SPACE_VERTICAL_SWIPE, "")!!.uppercase())
+            }
+            if (prefs.contains("auto_correct_threshold")) {
+                val newValue = when (prefs.getFloat("auto_correct_threshold", 0f)) {
+                    in -2f..0f -> 1f
+                    in 0f..0.1f -> 0.65f
+                    else -> 0.24f
+                }
+                prefs.edit {
+                    remove("auto_correct_threshold")
+                    putFloat(Settings.PREF_AUTO_CORRECT_CONFIDENCE, newValue)
+                }
+            }
+            prefs.edit {
+                if (!prefs.getBoolean("narrow_key_gaps", false) && !Settings.getInstance().isTablet) {
+                    putFloat(createPrefKeyForBooleanSettings(Settings.PREF_KEY_GAP_SCALE_PREFIX, 0, 2), 1.75f)
+                    putFloat(createPrefKeyForBooleanSettings(Settings.PREF_KEY_GAP_SCALE_PREFIX, 1, 2), 1.1f)
+                    putFloat(createPrefKeyForBooleanSettings(Settings.PREF_KEY_GAP_SCALE_PREFIX, 2, 2), 1.75f)
+                    putFloat(createPrefKeyForBooleanSettings(Settings.PREF_KEY_GAP_SCALE_PREFIX, 3, 2), 1.1f)
+                }
+                remove("narrow_key_gaps")
             }
         }
         upgradeToolbarPrefs(prefs)

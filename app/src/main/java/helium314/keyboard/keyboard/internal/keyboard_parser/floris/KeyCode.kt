@@ -54,10 +54,13 @@ object KeyCode {
     //const val CLIPBOARD_CLEAR_FULL_HISTORY = -37
     //const val CLIPBOARD_CLEAR_PRIMARY_CLIP = -38
 
+    const val TOGGLE_FLOATING_WINDOW =      -109
+    //const val TOGGLE_COMPACT_LAYOUT =       -110
     //const val COMPACT_LAYOUT_TO_LEFT =      -111
     //const val COMPACT_LAYOUT_TO_RIGHT =     -112
     const val SPLIT_LAYOUT =                -113
     //const val MERGE_LAYOUT =                -114
+    //const val TOGGLE_RESIZE_MODE =          -115
 
     const val UNDO =                        -131
     const val REDO =                        -132
@@ -74,7 +77,7 @@ object KeyCode {
     const val EMOJI =                       -212 // IME_UI_MODE_MEDIA
     const val CLIPBOARD =                   -213 // IME_UI_MODE_CLIPBOARD
 
-    //const val SYSTEM_INPUT_METHOD_PICKER =  -221
+    const val SYSTEM_INPUT_METHOD_PICKER =  -221
     //const val SYSTEM_PREV_INPUT_METHOD =    -222
     //const val SYSTEM_NEXT_INPUT_METHOD =    -223
     //const val IME_SUBTYPE_PICKER =          -224
@@ -193,7 +196,8 @@ object KeyCode {
         REDO, ARROW_DOWN, ARROW_UP, ARROW_RIGHT, ARROW_LEFT, CLIPBOARD_COPY, CLIPBOARD_PASTE, CLIPBOARD_SELECT_ALL,
         CLIPBOARD_SELECT_WORD, TOGGLE_INCOGNITO_MODE, TOGGLE_AUTOCORRECT, MOVE_START_OF_LINE, MOVE_END_OF_LINE,
         MOVE_START_OF_PAGE, MOVE_END_OF_PAGE, SHIFT, CAPS_LOCK, MULTIPLE_CODE_POINTS, UNSPECIFIED, CTRL, ALT,
-        FN, CLIPBOARD_CLEAR_HISTORY, NUMPAD, IME_HIDE_UI, CTRL_LOCK, ALT_LOCK, FN_LOCK,
+        FN, CLIPBOARD_CLEAR_HISTORY, NUMPAD, IME_HIDE_UI, CTRL_LOCK, ALT_LOCK, FN_LOCK, SYSTEM_INPUT_METHOD_PICKER,
+        TOGGLE_FLOATING_WINDOW,
 
         // heliboard only
         SYMBOL_ALPHA, TOGGLE_ONE_HANDED_MODE, SWITCH_ONE_HANDED_MODE, SPLIT_LAYOUT, SHIFT_ENTER,
@@ -326,5 +330,10 @@ object KeyCode {
         'Y' -> KeyEvent.KEYCODE_Y
         'Z' -> KeyEvent.KEYCODE_Z
         else -> KeyEvent.KEYCODE_UNKNOWN
+    }
+
+    @JvmStatic fun isIsBlockedWhenLocked(keyCode: Int) = when (keyCode) {
+        SETTINGS, TOGGLE_FLOATING_WINDOW, CLIPBOARD, CLIPBOARD_PASTE -> true
+        else -> false
     }
 }

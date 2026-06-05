@@ -358,6 +358,7 @@
     <string name="redo" tools:keep="@string/redo">Redo</string>
     <string name="close_history" tools:keep="@string/close_history">Close clipboard history</string>
     <string name="emoji" tools:keep="@string/emoji">Emoji</string>
+    <string name="floating" tools:keep="@string/floating">Floating Keyboard</string>
     <!-- Title of the setting to set clipboard toolbar keys -->
     <string name="clipboard_toolbar_keys">Select clipboard toolbar keys</string>
     <!-- Title of the setting to set pinned toolbar keys -->
@@ -380,8 +381,10 @@
     <string name="prefs_long_press_keyboard_to_change_lang_summary">Long pressing space key will prompt input method selection menu</string>
     <!-- Title of the setting enabling long press on symbols key to switch to numpad -->
     <string name="prefs_long_press_symbol_for_numpad">Long press symbols key for numpad</string>
-    <!-- Title of the setting for reduced distance between keys -->
+    <!-- Title of the setting for reduced distance between keys, todo: not used any more -->
     <string name="prefs_narrow_key_gaps">Narrow key gaps</string>
+    <!-- Title of the setting for setting distance between keys -->
+    <string name="prefs_key_gap_scale">Key gap scale</string>
     <!-- Title of the setting for setting keyboard height -->
     <string name="prefs_keyboard_height_scale">Keyboard height scale</string>
     <!-- Title of the setting for setting bottom padding height -->
@@ -894,10 +897,18 @@ New dictionary:
     <string name="space_swipe_touchpad_mode_entry">Touchpad mode</string>
     <!-- Option to adjust spacebar-touchpad sensitivity -->
     <string name="touchpad_sensitivity">Touchpad sensitivity</string>
+    <!-- Option to enable or disable automatic scrolling when the cursor reaches the keyboard edges -->
+    <string name="touchpad_edge_scroll">Touchpad edge scrolling</string>
+    <!-- Description for the touchpad edge scrolling option -->
+    <string name="touchpad_edge_scroll_description">Automatically scroll when sliding to the edge of the keyboard</string>
     <!-- Title of the setting for variable toolbar direction -->
     <string name="var_toolbar_direction">Variable toolbar direction</string>
     <!-- Description of the variable toolbar direction setting -->
     <string name="var_toolbar_direction_summary">Reverse direction when a right-to-left keyboard subtype is selected</string>
+    <!-- Title of the setting for showing toolbar only when a hardware keyboard is connected -->
+    <string name="toolbar_only_with_hw_keyboard">Show only toolbar with physical keyboard</string>
+    <!-- Description of the setting for showing toolbar only when a hardware keyboard is connected -->
+    <string name="toolbar_only_with_hw_keyboard_summary">You still need to enable showing virtual keyboard in system settings</string>
     <!-- Title of the settings for adjusting the language swipe gesture distance -->
     <string name="prefs_language_swipe_distance">Switch language swipe distance</string>
     <!-- Title of the setting to customize toolbar key codes -->
@@ -938,6 +949,10 @@ New dictionary:
     <string name="search_field_placeholder">Search</string>
     <!-- Button to show later -->
     <string name="ask_later">Ask me later</string>
+    <!-- Switch to toggle suggestions when using the spell checker -->
+    <string name="spell_check_suggestions">Show spellchecker suggestions</string>
+    <!-- Description for toggling suggestions when using the spell checker -->
+    <string name="spell_check_suggestions_summary">Show suggestions when selecting a word with red underline. Requires setting app as default spell checker.</string>
 
 
     <!-- gesture data gathering, new strings for normal use should go above -->

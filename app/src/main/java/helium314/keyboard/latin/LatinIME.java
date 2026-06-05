@@ -69,6 +69,7 @@ import helium314.keyboard.latin.suggestions.SuggestionStripView;
 import helium314.keyboard.latin.suggestions.SuggestionStripViewAccessor;
 import helium314.keyboard.latin.touchinputconsumer.GestureConsumer;
 import helium314.keyboard.latin.utils.ColorUtilKt;
+import helium314.keyboard.latin.utils.FloatingKeyboardUtils;
 import helium314.keyboard.latin.utils.FoldableUtils;
 import helium314.keyboard.latin.utils.GestureDataGatheringKt;
 import helium314.keyboard.latin.utils.GestureDataGatheringSettings;
@@ -856,11 +857,23 @@ public class LatinIME extends InputMethodService implements
         mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
         mRichImm.refreshSubtypeCaches();
         final KeyboardSwitcher switcher = mKeyboardSwitcher;
-        switcher.updateKeyboardTheme(mDisplayContext);
-        final MainKeyboardView mainKeyboardView = switcher.getMainKeyboardView();
+
         // If we are starting input in a different text field from before, we'll have to reload
         // settings, so currentSettingsValues can't be final.
         SettingsValues currentSettingsValues = mSettings.getCurrent();
+        boolean inputTypeChanged = !currentSettingsValues.isSameInputType(editorInfo);
+        boolean isDifferentTextField = !restarting || inputTypeChanged;
+
+        // we want to reload the settings before calling updateKeyboardTheme, because updateKeyboardTheme reads SettingsValues.mToolbarMode
+        if (isDifferentTextField || !currentSettingsValues.hasSameOrientation(getResources().getConfiguration())) {
+            loadSettings();
+            if (hasSuggestionStripView())
+                mSuggestionStripView.updateVoiceKey();
+        }
+
+        switcher.updateKeyboardTheme(mDisplayContext);
+        MainKeyboardView mainKeyboardView = switcher.getMainKeyboardView();
+        currentSettingsValues = mSettings.getCurrent(); // settingsValues may have been reloaded
 
         if (editorInfo == null) {
             Log.e(TAG, "Null EditorInfo in onStartInputView()");
@@ -891,9 +904,6 @@ public class LatinIME extends InputMethodService implements
             accessUtils.onStartInputViewInternal(mainKeyboardView, editorInfo, restarting);
         }
 
-        final boolean inputTypeChanged = !currentSettingsValues.isSameInputType(editorInfo);
-        final boolean isDifferentTextField = !restarting || inputTypeChanged;
-
         StatsUtils.onStartInputView(editorInfo.inputType,
                 Settings.getValues().mDisplayOrientation,
                 !isDifferentTextField);
@@ -902,13 +912,6 @@ public class LatinIME extends InputMethodService implements
         // Note: This call should be done by InputMethodService?
         updateFullscreenMode();
 
-        // we need to reload the setting before using them, e.g. in startInput or in postResumeSuggestions
-        if (isDifferentTextField || !currentSettingsValues.hasSameOrientation(getResources().getConfiguration())) {
-            loadSettings();
-            currentSettingsValues = mSettings.getCurrent();
-            if (hasSuggestionStripView())
-                mSuggestionStripView.updateVoiceKey();
-        }
         // ALERT: settings have not been reloaded and there is a chance they may be stale.
         // In the practice, if it is, we should have gotten onConfigurationChanged so it should
         // be fine, but this is horribly confusing and must be fixed AS SOON AS POSSIBLE.
@@ -997,6 +1000,8 @@ public class LatinIME extends InputMethodService implements
     public void onWindowShown() {
         super.onWindowShown();
         if (isInputViewShown()) {
+            if (mInputView != null && Settings.getValues().mIsFloatingKeyboard)
+                FloatingKeyboardUtils.setFloating(mInputView);
             setNavigationBarColor();
             workaroundForHuaweiStatusBarIssue();
         }
@@ -1143,7 +1148,7 @@ public class LatinIME extends InputMethodService implements
                 }
             }
         }
-        if (!mSettings.getCurrent().isApplicationSpecifiedCompletionsOn()) {
+        if (!mSettings.getCurrent().mInputAttributes.mApplicationSpecifiedCompletionOn) {
             return;
         }
         // If we have an update request in flight, we need to cancel it so it does not override
@@ -1191,6 +1196,8 @@ public class LatinIME extends InputMethodService implements
         }
         final int stripHeight = mKeyboardSwitcher.isShowingStripContainer() ? mKeyboardSwitcher.getStripContainer().getHeight() : 0;
         int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight;
+        if (Settings.getValues().mIsFloatingKeyboard)
+            visibleTopY = getResources().getDisplayMetrics().heightPixels;
 
         if (hasSuggestionStripView()) {
             mSuggestionStripView.setMoreSuggestionsHeight(visibleTopY);
@@ -1198,12 +1205,17 @@ public class LatinIME extends InputMethodService implements
 
         // Need to set expanded touchable region only if a keyboard view is being shown.
         if (visibleKeyboardView.isShown()) {
-            final int touchLeft = 0;
-            final int touchTop = mKeyboardSwitcher.isShowingPopupKeysPanel() ? 0 : visibleTopY;
-            final int touchRight = visibleKeyboardView.getWidth();
-            final int touchBottom = inputHeight
-                    // Extend touchable region below the keyboard.
-                    + EXTENDED_TOUCHABLE_REGION_HEIGHT;
+            int touchLeft = 0;
+            int touchTop = mKeyboardSwitcher.isShowingPopupKeysPanel() ? 0 : visibleTopY;
+            int touchRight = visibleKeyboardView.getWidth();
+            int touchBottom = inputHeight + EXTENDED_TOUCHABLE_REGION_HEIGHT; // Extend touchable region below the keyboard.
+            if (mSettings.getCurrent().mIsFloatingKeyboard) {
+                var xy = FloatingKeyboardUtils.readPosition(this, Integer.MAX_VALUE, Integer.MAX_VALUE);
+                touchLeft = xy.component1();
+                touchTop = xy.component2();
+                touchRight = touchLeft + mSettings.getCurrent().mFloatingWidth;
+                touchBottom = touchTop + mSettings.getCurrent().mFloatingHeight + stripHeight + (int)FloatingKeyboardUtils.getFloatingHandleHeight(getResources());
+            }
             outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION;
             outInsets.touchableRegion.set(touchLeft, touchTop, touchRight, touchBottom);
         }
@@ -1249,8 +1261,8 @@ public class LatinIME extends InputMethodService implements
 
     @Override
     public boolean onEvaluateFullscreenMode() {
-        if (isImeSuppressedByHardwareKeyboard()) {
-            // If there is a hardware keyboard, disable full screen mode.
+        if (isImeSuppressedByHardwareKeyboard() || mSettings.getCurrent().mIsFloatingKeyboard) {
+            // If there is a hardware keyboard or we're floating, disable full screen mode.
             return false;
         }
         // Reread resource value here, because this method is called by the framework as needed.
@@ -1474,14 +1486,14 @@ public class LatinIME extends InputMethodService implements
         }
 
         final boolean isEmptyApplicationSpecifiedCompletions =
-                currentSettingsValues.isApplicationSpecifiedCompletionsOn()
+                currentSettingsValues.mInputAttributes.mApplicationSpecifiedCompletionOn
                         && suggestedWords.isEmpty();
         final boolean noSuggestionsFromDictionaries = suggestedWords.isEmpty()
                 || suggestedWords.isPunctuationSuggestions()
                 || isEmptyApplicationSpecifiedCompletions;
 
-        if (currentSettingsValues.isSuggestionsEnabledPerUserSettings()
-                || currentSettingsValues.isApplicationSpecifiedCompletionsOn()
+        if (currentSettingsValues.mSuggestionsEnabled
+                || currentSettingsValues.mInputAttributes.mApplicationSpecifiedCompletionOn
                 // We should clear the contextual strip if there is no suggestion from dictionaries.
                 || noSuggestionsFromDictionaries) {
             mSuggestionStripView.setSuggestions(suggestedWords,
