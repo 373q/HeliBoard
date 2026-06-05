@@ -553,7 +553,10 @@ public class LatinIME extends InputMethodService implements
                 }
             }
             @Override
-            public void onMacroSendEnter() {
+            public void onMacroSendMessage() {
+                // CODE_ENTER in InputLogic calls performEditorAction with the correct IME action
+                // (IME_ACTION_SEND, IME_ACTION_GO, etc.) for apps like Discord and Telegram.
+                // Falls back to a newline only for plain multiline fields with IME_ACTION_NONE.
                 onCodeInput(Constants.CODE_ENTER, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
             }
             @Override
@@ -564,6 +567,12 @@ public class LatinIME extends InputMethodService implements
             public boolean isShifted() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && kb.mId.isAlphabetShifted();
+            }
+            @Override
+            public String getCurrentInputText() {
+                final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
+                        helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
+                return text != null ? text.toString() : null;
             }
         });
     }
