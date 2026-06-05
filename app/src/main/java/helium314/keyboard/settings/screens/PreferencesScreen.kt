@@ -116,10 +116,10 @@ fun createPreferencesSettings(context: Context) = listOf(
         SwitchPreference(it, Defaults.PREF_POPUP_ON) { KeyboardSwitcher.getInstance().reloadKeyboard() }
     },
     Setting(context, Settings.PREF_HIDE_PERIOD_KEY, R.string.hide_period_key) {
-        SwitchPreference(it, Defaults.PREF_HIDE_PERIOD_KEY)
+        SwitchPreference(it, Defaults.PREF_HIDE_PERIOD_KEY) { KeyboardSwitcher.getInstance().reloadKeyboard() }
     },
     Setting(context, Settings.PREF_HIDE_COMMA_KEY, R.string.hide_comma_key) {
-        SwitchPreference(it, Defaults.PREF_HIDE_COMMA_KEY)
+        SwitchPreference(it, Defaults.PREF_HIDE_COMMA_KEY) { KeyboardSwitcher.getInstance().reloadKeyboard() }
     },
     Setting(context, Settings.PREF_NO_VISUAL_KEY_FEEDBACK, R.string.no_visual_key_feedback) {
         SwitchPreference(it, Defaults.PREF_NO_VISUAL_KEY_FEEDBACK) { KeyboardSwitcher.getInstance().reloadKeyboard() }
