@@ -58,6 +58,7 @@ public final class KeyboardCodesSet {
         "key_switch_onehanded",
         "key_emoji_search",
         "toggle_floating",
+        "key_macro_toggle",
     };
 
     private static final int[] DEFAULT = {
@@ -86,6 +87,7 @@ public final class KeyboardCodesSet {
         KeyCode.SWITCH_ONE_HANDED_MODE,
         KeyCode.EMOJI_SEARCH,
         KeyCode.TOGGLE_FLOATING_WINDOW,
+        KeyCode.MACRO_TOGGLE,
     };
 
     static {
