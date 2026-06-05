@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.latin.macro
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import helium314.keyboard.latin.settings.Settings
@@ -24,16 +23,18 @@ object MacroManager {
     private var isRunning = false
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    // Clipboard text captured at start time; cleared on stop
-    private var clipboardPrefix: String? = null
+    // Text captured from input field at start time; cleared on stop
+    private var inputPrefix: String? = null
 
     var listener: MacroListener? = null
 
     interface MacroListener {
         fun onMacroTypeChar(char: Char)
-        fun onMacroSendEnter()
+        fun onMacroSendMessage()
         fun onMacroPasteText(text: String)
         fun isShifted(): Boolean
+        /** Returns current text in the input field, or null if unavailable */
+        fun getCurrentInputText(): String?
     }
 
     fun isRunning() = isRunning
@@ -52,9 +53,8 @@ object MacroManager {
         isRunning = true
         val startedShifted = listener?.isShifted() ?: false
 
-        // Capture clipboard at this exact moment
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboardPrefix = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()
+        // Capture current input field text as prefix (replaces old clipboard approach)
+        inputPrefix = listener?.getCurrentInputText()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
@@ -67,7 +67,7 @@ object MacroManager {
         isRunning = false
         typingJob?.cancel()
         typingJob = null
-        clipboardPrefix = null  // reset on stop
+        inputPrefix = null
     }
 
     private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
@@ -81,7 +81,6 @@ object MacroManager {
             val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
             val startDelay = prefs.getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
 
-            // Start delay only before the very first message
             if (isFirst) {
                 delay(startDelay)
                 isFirst = false
@@ -89,8 +88,8 @@ object MacroManager {
 
             if (!isRunning) return
 
-            // If clipboard has text, paste it before every message
-            val prefix = clipboardPrefix
+            // If input field had text when started, paste it before every message as prefix
+            val prefix = inputPrefix
             if (!prefix.isNullOrEmpty()) {
                 val textToSend = if (capsOn) prefix.uppercase() else prefix
                 withContext(Dispatchers.Main) {
@@ -99,7 +98,7 @@ object MacroManager {
                 if (!isRunning) return
                 delay(200)
                 withContext(Dispatchers.Main) {
-                    listener?.onMacroSendEnter()
+                    listener?.onMacroSendMessage()
                 }
                 delay(msgDelay)
                 if (!isRunning) return
@@ -126,7 +125,7 @@ object MacroManager {
             delay(200)
 
             withContext(Dispatchers.Main) {
-                listener?.onMacroSendEnter()
+                listener?.onMacroSendMessage()
             }
 
             delay(msgDelay)
