@@ -50,6 +50,7 @@ import helium314.keyboard.dictionarypack.DictionaryPackConstants;
 import helium314.keyboard.event.Event;
 import helium314.keyboard.event.InputTransaction;
 import helium314.keyboard.keyboard.Keyboard;
+import helium314.keyboard.keyboard.Key;
 import helium314.keyboard.keyboard.KeyboardId;
 import helium314.keyboard.keyboard.KeyboardLayoutSet;
 import helium314.keyboard.keyboard.KeyboardSwitcher;
@@ -100,6 +101,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
+import helium314.keyboard.latin.macro.MacroManager;
 
 /**
  * Input method implementation for Qwerty'ish keyboard.
@@ -532,6 +534,38 @@ public class LatinIME extends InputMethodService implements
         mKeyboardActionListener = new KeyboardActionListenerImpl(this, mInputLogic);
         mIsHardwareAcceleratedDrawingEnabled = this.enableHardwareAcceleration();
         Log.i(TAG, "Hardware accelerated drawing: " + mIsHardwareAcceleratedDrawingEnabled);
+        // Register macro listener
+        MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
+            @Override
+            public void onMacroTypeChar(char c) {
+                onCodeInput((int) c, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Show key preview if enabled
+                final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
+                if (kv != null) {
+                    final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                    if (kb != null) {
+                        final helium314.keyboard.keyboard.Key key = kb.getKey((int) c);
+                        if (key != null) {
+                            kv.onKeyPressed(key, true);
+                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                        }
+                    }
+                }
+            }
+            @Override
+            public void onMacroSendEnter() {
+                onCodeInput(Constants.CODE_ENTER, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            }
+            @Override
+            public void onMacroPasteText(String text) {
+                onTextInput(text);
+            }
+            @Override
+            public boolean isShifted() {
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                return kb != null && kb.mId.isAlphabetShifted();
+            }
+        });
     }
 
     @Override
