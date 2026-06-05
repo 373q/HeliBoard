@@ -1,0 +1,173 @@
+// SPDX-License-Identifier: GPL-3.0-only
+package helium314.keyboard.latin.macro
+
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
+import helium314.keyboard.latin.settings.Settings
+import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.prefs
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+
+object MacroManager {
+
+    private const val TAG = "MacroManager"
+    const val MACRO_FILE_NAME = "macro_messages.txt"
+
+    private var typingJob: Job? = null
+    private var isRunning = false
+    private val scope = CoroutineScope(Dispatchers.Default)
+
+    // Clipboard text captured at start time; cleared on stop
+    private var clipboardPrefix: String? = null
+
+    var listener: MacroListener? = null
+
+    interface MacroListener {
+        fun onMacroTypeChar(char: Char)
+        fun onMacroSendEnter()
+        fun onMacroPasteText(text: String)
+        fun isShifted(): Boolean
+    }
+
+    fun isRunning() = isRunning
+
+    fun toggle(context: Context) {
+        if (isRunning) stop() else start(context)
+    }
+
+    fun start(context: Context) {
+        if (isRunning) return
+        val messages = loadMessages(context)
+        if (messages.isEmpty()) {
+            Log.w(TAG, "No messages to send")
+            return
+        }
+        isRunning = true
+        val startedShifted = listener?.isShifted() ?: false
+
+        // Capture clipboard at this exact moment
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        clipboardPrefix = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+        typingJob = scope.launch {
+            runMacro(context, messages.toMutableList(), startedShifted)
+        }
+    }
+
+    fun stop() {
+        isRunning = false
+        typingJob?.cancel()
+        typingJob = null
+        clipboardPrefix = null  // reset on stop
+    }
+
+    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
+        val prefs = context.prefs()
+        messages.shuffle()
+        var index = 0
+        var isFirst = true
+
+        while (isRunning) {
+            val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
+            val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
+            val startDelay = prefs.getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
+
+            // Start delay only before the very first message
+            if (isFirst) {
+                delay(startDelay)
+                isFirst = false
+            }
+
+            if (!isRunning) return
+
+            // If clipboard has text, paste it before every message
+            val prefix = clipboardPrefix
+            if (!prefix.isNullOrEmpty()) {
+                val textToSend = if (capsOn) prefix.uppercase() else prefix
+                withContext(Dispatchers.Main) {
+                    listener?.onMacroPasteText(textToSend)
+                }
+                if (!isRunning) return
+                delay(200)
+                withContext(Dispatchers.Main) {
+                    listener?.onMacroSendEnter()
+                }
+                delay(msgDelay)
+                if (!isRunning) return
+            }
+
+            if (index >= messages.size) {
+                messages.shuffle()
+                index = 0
+            }
+
+            var msg = messages[index]
+            msg = mutateMessage(msg)
+            if (capsOn) msg = msg.uppercase()
+            index++
+
+            for (char in msg) {
+                if (!isRunning) return
+                withContext(Dispatchers.Main) {
+                    listener?.onMacroTypeChar(char)
+                }
+                delay(charDelay)
+            }
+
+            if (!isRunning) return
+            delay(200)
+
+            withContext(Dispatchers.Main) {
+                listener?.onMacroSendEnter()
+            }
+
+            delay(msgDelay)
+        }
+    }
+
+    private fun mutateMessage(msg: String): String {
+        if (msg.length < 3) return msg
+        return if (Math.random() < 0.5) msg
+        else msg.trimEnd() + " " + ('a'..'z').random()
+    }
+
+    fun loadMessages(context: Context): List<String> {
+        val file = getMacroFile(context)
+        if (!file.exists()) return emptyList()
+        return try {
+            file.readText()
+                .split(Regex("\n\n+|\r\n\r\n+"))
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading macro file", e)
+            emptyList()
+        }
+    }
+
+    fun importFile(context: Context, uri: Uri): Boolean {
+        return try {
+            val content = context.contentResolver.openInputStream(uri)?.use { it.reader().readText() }
+                ?: return false
+            val file = getMacroFile(context)
+            file.writeText(content)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error importing macro file", e)
+            false
+        }
+    }
+
+    fun getMacroFile(context: Context): File = File(context.filesDir, MACRO_FILE_NAME)
+
+    fun getMessageCount(context: Context): Int = loadMessages(context).size
+}
