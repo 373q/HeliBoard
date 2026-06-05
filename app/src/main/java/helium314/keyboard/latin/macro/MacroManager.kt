@@ -111,7 +111,6 @@ object MacroManager {
             }
 
             var msg = messages[index]
-            msg = mutateMessage(msg)
             if (capsOn) msg = msg.uppercase()
             index++
 
@@ -132,12 +131,6 @@ object MacroManager {
 
             delay(msgDelay)
         }
-    }
-
-    private fun mutateMessage(msg: String): String {
-        if (msg.length < 3) return msg
-        return if (Math.random() < 0.5) msg
-        else msg.trimEnd() + " " + ('a'..'z').random()
     }
 
     fun loadMessages(context: Context): List<String> {
