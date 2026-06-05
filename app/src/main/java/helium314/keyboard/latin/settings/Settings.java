@@ -207,6 +207,11 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_SAVE_SUBTYPE_PER_APP = "save_subtype_per_app";
     public static final String PREF_SAVED_APP_SUBTYPE_PREFIX = "saved_app_subtype_";
 
+    // Macro settings
+    public static final String PREF_MACRO_CHAR_DELAY = "macro_char_delay";
+    public static final String PREF_MACRO_MSG_DELAY = "macro_msg_delay";
+    public static final String PREF_MACRO_START_DELAY = "macro_start_delay";
+
     private Context mContext;
     private SharedPreferences mPrefs;
     private SettingsValues mSettingsValues;
