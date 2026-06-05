@@ -82,8 +82,8 @@ fun MacroSettingsScreen(onClickBack: () -> Unit) {
                     key = Settings.PREF_MACRO_MSG_DELAY,
                     description = { v: Int -> "${v}ms" },
                     default = 3000,
-                    range = 500f..30000f,
-                    stepSize = 500,
+                    range = 0f..3000f,
+                    stepSize = 100,
                 )
                 Preference(
                     name = if (MacroManager.isRunning()) "Stop Macro" else "Start Macro",
