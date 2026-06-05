@@ -64,6 +64,23 @@
             style="?attr/suggestionWordStyle" />
 
     </helium314.keyboard.latin.KeyboardWrapperView>
+
+    <!-- Invisible macro toggle strip: sits below the keyboard, right-aligned under Enter -->
+    <FrameLayout
+        android:id="@+id/macro_button_strip"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:background="@android:color/transparent">
+        <View
+            android:id="@+id/btn_macro_toggle"
+            android:layout_width="56dp"
+            android:layout_height="16dp"
+            android:layout_gravity="end"
+            android:background="@android:color/transparent"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Macro toggle" />
+    </FrameLayout>
     <LinearLayout
         android:id="@+id/float_handle_container"
         android:orientation="horizontal"
