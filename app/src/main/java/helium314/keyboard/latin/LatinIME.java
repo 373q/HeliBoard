@@ -559,7 +559,7 @@ public class LatinIME extends InputMethodService implements
                 // Use the same logic as pressing Enter: check EditorInfo for the correct action
                 // This works correctly in Discord, Telegram, WhatsApp etc.
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final int actionId = helium314.keyboard.latin.inputlogic.InputTypeUtils
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
                         .getImeOptionsActionIdFromEditorInfo(editorInfo);
                 if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
                     getCurrentInputConnection().performEditorAction(actionId);
