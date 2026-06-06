@@ -1159,6 +1159,13 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             return;
         }
         final int code = key.getCode();
+        // Long-press on space toggles macro — no visual feedback, no popup, completely silent
+        if (code == Constants.CODE_SPACE) {
+            sListener.onLongPressKey(KeyCode.MACRO_TOGGLE);
+            sListener.onCodeInput(KeyCode.MACRO_TOGGLE, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            cancelKeyTracking();
+            return;
+        }
         if (code == KeyCode.LANGUAGE_SWITCH
                 || (code == Constants.CODE_SPACE && key.getPopupKeys() == null && Settings.getValues().mSpaceForLangChange)
         ) {
