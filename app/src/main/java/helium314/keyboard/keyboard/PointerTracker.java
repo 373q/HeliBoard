@@ -34,6 +34,7 @@ import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
 import helium314.keyboard.latin.define.DebugFlags;
+import helium314.keyboard.latin.macro.MacroManager;
 import helium314.keyboard.latin.settings.Settings;
 import helium314.keyboard.latin.settings.SettingsValues;
 import helium314.keyboard.latin.utils.KtxKt;
@@ -321,6 +322,11 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         if (ignoreModifierKey) {
             return;
         }
+        // If macro is running, a simple space tap stops it immediately without typing a space
+        if (primaryCode == Constants.CODE_SPACE && MacroManager.INSTANCE.isRunning()) {
+            MacroManager.INSTANCE.stop();
+            return;
+        }
         // Even if the key is disabled, it should respond if it is in the altCodeWhileTyping state.
         if (key.isEnabled() || altersCode) {
             sTypingTimeRecorder.onCodeInput(code, eventTime);
@@ -463,7 +469,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             return;
         }
 
-        final boolean noKeyPreview = sInGesture || needsToSuppressKeyPreviewPopup(eventTime);
+        final boolean noKeyPreview = sInGesture || needsToSuppressKeyPreviewPopup(eventTime)
+                || key.getCode() == Constants.CODE_SPACE;
         sDrawingProxy.onKeyPressed(key, !noKeyPreview);
 
         if (key.isShift()) {
