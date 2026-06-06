@@ -550,7 +550,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         view.setOnClickListener(this)
         view.setOnLongClickListener(this)
         colors.setColor(view, ColorType.TOOL_BAR_KEY)
-        colors.setBackground(view, ColorType.STRIP_BACKGROUND)
+        // No background = no ripple/pressed highlight on toolbar keys
+        view.background = null
     }
 
     companion object {
