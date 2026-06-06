@@ -56,7 +56,6 @@ object MacroManager {
 
         // Capture current input field text as prefix (replaces old clipboard approach)
         inputPrefix = listener?.getCurrentInputText()
-            ?.trim()
             ?.takeIf { it.isNotEmpty() }
 
         listener?.onMacroStart(inputPrefix != null)
