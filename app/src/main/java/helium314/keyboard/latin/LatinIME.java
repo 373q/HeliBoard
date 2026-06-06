@@ -558,22 +558,33 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
-                // Commit composing text first
                 mInputLogic.finishInput();
-                // Use the same logic as pressing Enter: check EditorInfo for the correct action
-                // This works correctly in Discord, Telegram, WhatsApp etc.
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
-                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
-                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
-                    getCurrentInputConnection().performEditorAction(actionId);
-                } else {
-                    // Fallback: send Enter keyevent directly
-                    getCurrentInputConnection().sendKeyEvent(
-                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                    getCurrentInputConnection().sendKeyEvent(
-                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+
+                final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
+                // Read maskedAction directly — intentionally bypass FLAG_NO_ENTER_ACTION.
+                // Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND; InputTypeUtils returns NONE for that,
+                // but we want to send anyway. Reading maskedAction directly gives us IME_ACTION_SEND for Discord.
+                final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+
+                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    // Covers Discord (SEND), Instagram (SEND), Telegram (SEND), browsers (GO), etc.
+                    ic.performEditorAction(maskedAction);
+                    return;
                 }
+
+                // Multiline field with no declared action (web chat, webviews) — try SEND
+                if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                    return;
+                }
+
+                // Final fallback — raw Enter key events (legacy apps, some browsers)
+                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
             @Override
             public void onMacroPasteText(String text) {
