@@ -32,6 +32,7 @@ object MacroManager {
         fun onMacroTypeChar(char: Char)
         fun onMacroSendMessage()
         fun onMacroPasteText(text: String)
+        fun onMacroStart(hasPrefix: Boolean)
         fun isShifted(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
@@ -57,6 +58,8 @@ object MacroManager {
         inputPrefix = listener?.getCurrentInputText()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
+
+        listener?.onMacroStart(inputPrefix != null)
 
         typingJob = scope.launch {
             runMacro(context, messages.toMutableList(), startedShifted)
@@ -88,22 +91,6 @@ object MacroManager {
 
             if (!isRunning) return
 
-            // Only add prefix from the second message onwards (first message already has it in the field)
-            val prefix = inputPrefix
-            if (!prefix.isNullOrEmpty() && index > 0) {
-                val textToSend = if (capsOn) prefix.uppercase() else prefix
-                withContext(Dispatchers.Main) {
-                    listener?.onMacroPasteText(textToSend)
-                }
-                if (!isRunning) return
-                delay(200)
-                withContext(Dispatchers.Main) {
-                    listener?.onMacroSendMessage()
-                }
-                delay(msgDelay)
-                if (!isRunning) return
-            }
-
             if (index >= messages.size) {
                 messages.shuffle()
                 index = 0
@@ -113,13 +100,32 @@ object MacroManager {
             if (capsOn) msg = msg.uppercase()
             index++
 
+            // From the second message onwards, paste the prefix inline then type the message
+            val prefix = inputPrefix
+            val needsPrefix = !prefix.isNullOrEmpty() && index > 1
+
+            if (needsPrefix) {
+                val p = if (capsOn) prefix!!.uppercase() else prefix!!
+                withContext(Dispatchers.Main) {
+                    listener?.onMacroPasteText(p)
+                }
+                delay(150)
+                if (!isRunning) return
+            }
+
+            // Type each character with ramp-up delay for first 3 chars: 120ms, 100ms, 90ms, then normal
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 withContext(Dispatchers.Main) {
                     listener?.onMacroTypeChar(char)
                 }
-                // First character gets 90ms fixed delay, rest use the configured delay
-                delay(if (charIndex == 0) 90L else charDelay)
+                val d = when (charIndex) {
+                    0 -> 120L
+                    1 -> 100L
+                    2 -> 90L
+                    else -> charDelay
+                }
+                delay(d)
             }
 
             if (!isRunning) return
