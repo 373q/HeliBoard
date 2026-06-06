@@ -538,10 +538,15 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                // MacroManager already applies caps/lowercase per-character based on isCapsLocked().
-                // We send the character exactly as received, as a raw code input (no shift state applied).
-                final int codeToSend = (int) c;
+                // Read current shift state before typing
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                final boolean isShifted = kb != null && kb.mId.isAlphabetShifted();
+
+                // If keyboard is shifted, send uppercase version of the character
+                final int codeToSend = isShifted ? Character.toUpperCase((int) c) : (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
+                // after typing a letter — no need to send KeyCode.SHIFT manually.
 
                 // Show key preview if enabled
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
@@ -560,25 +565,31 @@ public class LatinIME extends InputMethodService implements
             public void onMacroSendMessage() {
                 mInputLogic.finishInput();
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
-                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
 
+                // Try InputTypeUtils first — works for Discord (Enter brut via fallback) si
+                // orice app care nu seteaza FLAG_NO_ENTER_ACTION
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
                 if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
                         && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    // Covers Discord (SEND via AppWorkarounds), Instagram, Telegram, WhatsApp, browsers (GO)
                     ic.performEditorAction(actionId);
                     return;
                 }
 
-                // Multiline field with no declared action (web chat, webviews) — try SEND
-                if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
-                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                // InputTypeUtils a returnat NONE — app-ul are FLAG_NO_ENTER_ACTION setat.
+                // Citim maskedAction direct ca sa prindem Instagram, Telegram etc care seteaza
+                // FLAG_NO_ENTER_ACTION + IME_ACTION_SEND dar raspund la performEditorAction(SEND).
+                final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
+                        & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    ic.performEditorAction(maskedAction);
                     return;
                 }
 
-                // Final fallback — raw Enter key events
+                // Fallback final — Enter brut (web, browsere, aplicatii legacy)
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
@@ -603,16 +614,6 @@ public class LatinIME extends InputMethodService implements
             public boolean isShifted() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && kb.mId.isAlphabetShifted();
-            }
-            @Override
-            public boolean isCapsLocked() {
-                // Returns true only if shift is LOCKED (caps lock), not one-shot shift.
-                // This way, disabling caps lock mid-macro will immediately switch to lowercase.
-                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
-                if (kb == null) return false;
-                final int elementId = kb.mId.mElementId;
-                return elementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
-                        || elementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED;
             }
             @Override
             public String getCurrentInputText() {
