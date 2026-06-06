@@ -558,48 +558,11 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
-                // Commit composing text first
+                // Use CODE_ENTER via InputLogic — it handles performEditorAction correctly per app
+                // (Discord, Instagram, Telegram, browsers, etc.) without needing manual strategies.
+                // This is the original implementation that worked on all apps.
                 mInputLogic.finishInput();
-                final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
-                if (ic == null) return;
-
-                final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
-                final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-
-                // Strategy 1: Use InputTypeUtils to get the effective action ID, ignoring FLAG_NO_ENTER_ACTION.
-                // This is what made Discord work — Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND,
-                // and InputTypeUtils correctly resolves the action regardless of that flag.
-                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
-                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
-                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(actionId);
-                    return;
-                }
-
-                // Strategy 2: App declared IME_ACTION_SEND (Instagram, Telegram — some set SEND but
-                // InputTypeUtils may not catch it; try explicitly)
-                if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
-                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-                    return;
-                }
-
-                // Strategy 3: Multiline text field in browser/webview — try SEND unconditionally
-                if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
-                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-                    return;
-                }
-
-                // Strategy 4: IME_ACTION_GO (browser URL bars, search fields)
-                if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
-                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
-                    return;
-                }
-
-                // Strategy 5: Final fallback — raw Enter key events
-                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                onCodeInput(Constants.CODE_ENTER, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
             }
             @Override
             public void onMacroPasteText(String text) {
