@@ -568,28 +568,19 @@ public class LatinIME extends InputMethodService implements
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
 
-                // Try InputTypeUtils first — works for Discord (Enter brut via fallback) si
-                // orice app care nu seteaza FLAG_NO_ENTER_ACTION
-                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
-                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
-                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(actionId);
-                    return;
-                }
-
-                // InputTypeUtils a returnat NONE — app-ul are FLAG_NO_ENTER_ACTION setat.
-                // Citim maskedAction direct ca sa prindem Instagram, Telegram etc care seteaza
-                // FLAG_NO_ENTER_ACTION + IME_ACTION_SEND dar raspund la performEditorAction(SEND).
                 final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
                         & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+
                 if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
                         && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    // Instagram, Telegram etc — performEditorAction(SEND) trimite mesajul.
+                    // Discord ignora acest apel, deci trimitem si Enter brut dupa.
                     ic.performEditorAction(maskedAction);
-                    return;
                 }
 
-                // Fallback final — Enter brut (web, browsere, aplicatii legacy)
+                // Enter brut — prinde Discord (si orice app care raspunde la el).
+                // Pe Instagram/Telegram acest Enter vine dupa ce mesajul e deja trimis,
+                // deci campul e gol si Enter-ul nu face nimic rau.
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
