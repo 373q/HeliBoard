@@ -23,8 +23,8 @@ object MacroManager {
     private var isRunning = false
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    // Text captured from input field at start time; cleared on stop
     private var inputPrefix: String? = null
+    private var isBoldMode = false
 
     var listener: MacroListener? = null
 
@@ -33,6 +33,7 @@ object MacroManager {
         fun onMacroSendMessage()
         fun onMacroPasteText(text: String)
         fun onMacroStart(hasPrefix: Boolean)
+        fun onMacroSwitchKeyboard(toSymbols: Boolean)
         fun isShifted(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
@@ -54,11 +55,20 @@ object MacroManager {
         isRunning = true
         val startedShifted = listener?.isShifted() ?: false
 
-        // Capture current input field text as prefix (replaces old clipboard approach)
-        inputPrefix = listener?.getCurrentInputText()
-            ?.takeIf { it.isNotEmpty() }
+        // Capture current input field text
+        val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
 
-        listener?.onMacroStart(inputPrefix != null)
+        // Detect bold mode: input ends with **
+        isBoldMode = rawInput?.endsWith("**") == true
+
+        // Prefix is everything before the trailing ** (if bold), or the full text
+        inputPrefix = if (isBoldMode && rawInput != null) {
+            rawInput.dropLast(2).takeIf { it.isNotEmpty() }
+        } else {
+            rawInput
+        }
+
+        listener?.onMacroStart(inputPrefix != null || isBoldMode)
 
         typingJob = scope.launch {
             runMacro(context, messages.toMutableList(), startedShifted)
@@ -70,6 +80,7 @@ object MacroManager {
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null
+        isBoldMode = false
     }
 
     private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
@@ -99,25 +110,39 @@ object MacroManager {
             if (capsOn) msg = msg.uppercase()
             index++
 
-            // From the second message onwards, paste the prefix inline then type the message
+            val isFirstMsg = index == 1
             val prefix = inputPrefix
-            val needsPrefix = !prefix.isNullOrEmpty() && index > 1
+            val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg
 
-            if (needsPrefix) {
-                val p = if (capsOn) prefix!!.uppercase() else prefix!!
-                withContext(Dispatchers.Main) {
-                    listener?.onMacroPasteText(p)
+            // Build what to type before the message content
+            // First message: prefix is already in field (possibly with **), just type msg + ** (if bold)
+            // Later messages: paste prefix (if any), type ** (if bold), type msg, type **
+            if (!isFirstMsg) {
+                // Paste prefix if exists
+                if (needsPrefix) {
+                    val p = if (capsOn) prefix!!.uppercase() else prefix!!
+                    withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
+                    delay(150)
+                    if (!isRunning) return
                 }
-                delay(150)
-                if (!isRunning) return
+                // Type opening ** if bold mode — switch to symbols, type **, switch back
+                if (isBoldMode) {
+                    withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(true) }
+                    delay(charDelay)
+                    for (char in "**") {
+                        if (!isRunning) return
+                        withContext(Dispatchers.Main) { listener?.onMacroTypeChar(char) }
+                        delay(charDelay)
+                    }
+                    withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(false) }
+                    delay(charDelay)
+                }
             }
 
-            // Type each character with ramp-up delay for first 3 chars: 120ms, 100ms, 90ms, then normal
+            // Type the message with ramp-up delays
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
-                withContext(Dispatchers.Main) {
-                    listener?.onMacroTypeChar(char)
-                }
+                withContext(Dispatchers.Main) { listener?.onMacroTypeChar(char) }
                 val d = when (charIndex) {
                     0 -> 120L
                     1 -> 100L
@@ -125,6 +150,19 @@ object MacroManager {
                     else -> charDelay
                 }
                 delay(d)
+            }
+
+            // Type closing ** if bold mode — switch to symbols, type **, switch back
+            if (isBoldMode) {
+                withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(true) }
+                delay(charDelay)
+                for (char in "**") {
+                    if (!isRunning) return
+                    withContext(Dispatchers.Main) { listener?.onMacroTypeChar(char) }
+                    delay(charDelay)
+                }
+                withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(false) }
+                delay(charDelay)
             }
 
             if (!isRunning) return
