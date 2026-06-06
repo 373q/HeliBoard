@@ -558,33 +558,22 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
+                // Commit composing text first
                 mInputLogic.finishInput();
+                // Use the same logic as pressing Enter: check EditorInfo for the correct action
+                // This works correctly in Discord, Telegram, WhatsApp etc.
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
-                if (ic == null) return;
-
-                final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
-                // Bypass FLAG_NO_ENTER_ACTION intentionally — Discord and many chat apps set this
-                // flag on multiline fields but still respond to performEditorAction(SEND).
-                final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-
-                // Strategy 1: App declares a meaningful action — perform it directly.
-                // Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND, maskedAction = SEND.
-                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(maskedAction);
-                    return;
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
+                    getCurrentInputConnection().performEditorAction(actionId);
+                } else {
+                    // Fallback: send Enter keyevent directly
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
                 }
-
-                // Strategy 2: Multiline field with no declared action (web chat, webviews)
-                if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
-                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-                    return;
-                }
-
-                // Strategy 3: Final fallback — raw Enter key events
-                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
             @Override
             public void onMacroPasteText(String text) {
