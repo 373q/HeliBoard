@@ -21,6 +21,7 @@ import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.getActivity
 import helium314.keyboard.latin.utils.locale
 import helium314.keyboard.latin.utils.prefs
+import androidx.core.content.edit
 import helium314.keyboard.settings.preferences.ListPreference
 import helium314.keyboard.settings.Setting
 import helium314.keyboard.settings.preferences.ReorderSwitchPreference
@@ -113,7 +114,13 @@ fun createPreferencesSettings(context: Context) = listOf(
         SwitchPreference(it, Defaults.PREF_SHOW_POPUP_HINTS) { KeyboardSwitcher.getInstance().setThemeNeedsReload() }
     },
     Setting(context, Settings.PREF_POPUP_ON, R.string.popup_on_keypress) {
-        SwitchPreference(it, Defaults.PREF_POPUP_ON) { KeyboardSwitcher.getInstance().reloadKeyboard() }
+        SwitchPreference(it, Defaults.PREF_POPUP_ON) { newValue ->
+            // When enabling popup, disable no_visual_key_feedback (they conflict)
+            if (newValue) {
+                context.prefs().edit().putBoolean(Settings.PREF_NO_VISUAL_KEY_FEEDBACK, false).apply()
+            }
+            KeyboardSwitcher.getInstance().reloadKeyboard()
+        }
     },
     Setting(context, Settings.PREF_HIDE_PERIOD_KEY, R.string.hide_period_key) {
         SwitchPreference(it, Defaults.PREF_HIDE_PERIOD_KEY) { KeyboardSwitcher.getInstance().reloadKeyboard() }
@@ -122,7 +129,13 @@ fun createPreferencesSettings(context: Context) = listOf(
         SwitchPreference(it, Defaults.PREF_HIDE_COMMA_KEY) { KeyboardSwitcher.getInstance().reloadKeyboard() }
     },
     Setting(context, Settings.PREF_NO_VISUAL_KEY_FEEDBACK, R.string.no_visual_key_feedback) {
-        SwitchPreference(it, Defaults.PREF_NO_VISUAL_KEY_FEEDBACK) { KeyboardSwitcher.getInstance().reloadKeyboard() }
+        SwitchPreference(it, Defaults.PREF_NO_VISUAL_KEY_FEEDBACK) { newValue ->
+            // When enabling no_visual_key_feedback, disable popup_on (they conflict)
+            if (newValue) {
+                context.prefs().edit().putBoolean(Settings.PREF_POPUP_ON, false).apply()
+            }
+            KeyboardSwitcher.getInstance().reloadKeyboard()
+        }
     },
     Setting(context, Settings.PREF_VIBRATE_ON, R.string.vibrate_on_keypress) {
         SwitchPreference(it, Defaults.PREF_VIBRATE_ON)
