@@ -576,6 +576,12 @@ public class LatinIME extends InputMethodService implements
                 onTextInput(text);
             }
             @Override
+            public void onMacroStart(boolean hasPrefix) {
+                if (hasPrefix && mSuggestionStripView != null) {
+                    mSuggestionStripView.setToolbarVisibility(true);
+                }
+            }
+            @Override
             public boolean isShifted() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && kb.mId.isAlphabetShifted();
