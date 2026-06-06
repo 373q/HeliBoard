@@ -565,19 +565,43 @@ public class LatinIME extends InputMethodService implements
             public void onMacroSendMessage() {
                 // Commit composing text first
                 mInputLogic.finishInput();
-                // Use the same logic as pressing Enter: check EditorInfo for the correct action
-                // This works correctly in Discord, Telegram, WhatsApp etc.
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
                 final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
                         .getImeOptionsActionIdFromEditorInfo(editorInfo);
-                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
-                    getCurrentInputConnection().performEditorAction(actionId);
-                } else {
-                    // Fallback: send Enter keyevent directly
-                    getCurrentInputConnection().sendKeyEvent(
-                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                    getCurrentInputConnection().sendKeyEvent(
-                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+
+                boolean sent = false;
+
+                // 1. Try performEditorAction with detected action (works in Discord app, WhatsApp etc.)
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    ic.performEditorAction(actionId);
+                    sent = true;
+                }
+
+                if (!sent) {
+                    // 2. Try IME_ACTION_SEND explicitly (Instagram, Telegram, many chat apps)
+                    if ((editorInfo != null) && ((editorInfo.imeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION)
+                            == android.view.inputmethod.EditorInfo.IME_ACTION_SEND)) {
+                        ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                        sent = true;
+                    }
+                }
+
+                if (!sent) {
+                    // 3. Try IME_ACTION_GO (browsers, search fields)
+                    if ((editorInfo != null) && ((editorInfo.imeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION)
+                            == android.view.inputmethod.EditorInfo.IME_ACTION_GO)) {
+                        ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+                        sent = true;
+                    }
+                }
+
+                if (!sent) {
+                    // 4. Fallback: send Enter key event (works in browsers and web-based inputs)
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
                 }
             }
             @Override
