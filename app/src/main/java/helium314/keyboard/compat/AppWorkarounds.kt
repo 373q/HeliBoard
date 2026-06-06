@@ -34,6 +34,9 @@ object AppWorkarounds {
             // on their search bar in Pixel launcher, and all keyboards ignore the flags because otherwise
             // they would actually not perform the search action on action key. See https://github.com/HeliBorg/HeliBoard/issues/1989
             "com.google.android.apps.nexuslauncher" -> if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) imeOptions - EditorInfo.IME_FLAG_NO_ENTER_ACTION else imeOptions
+            // Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND on its message input field,
+            // but expects performEditorAction(SEND) to actually send the message.
+            "com.discord" -> if (imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0) imeOptions - EditorInfo.IME_FLAG_NO_ENTER_ACTION else imeOptions
             else -> imeOptions
         }
     }
