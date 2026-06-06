@@ -142,11 +142,11 @@ object MacroManager {
             }
 
             // Type the message with ramp-up delays
-            // Caps state is checked per-character so toggling caps mid-message takes effect immediately
+            // isShifted() covers both one-shot shift and caps lock — keyboard resets one-shot after each char automatically
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
-                val capsNow = listener?.isCapsLocked() ?: false
-                val charToType = if (capsNow) char.uppercaseChar() else char.lowercaseChar()
+                val shiftedNow = listener?.isShifted() ?: false
+                val charToType = if (shiftedNow) char.uppercaseChar() else char.lowercaseChar()
                 withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 val d = when (charIndex) {
                     0 -> 120L
