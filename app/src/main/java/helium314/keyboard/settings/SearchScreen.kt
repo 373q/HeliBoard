@@ -59,11 +59,13 @@ fun SearchSettingsScreen(
     onClickBack: () -> Unit,
     title: String,
     settings: List<Any?>,
+    onQueryChange: ((String) -> Unit)? = null,
     content: @Composable (ColumnScope.() -> Unit)? = null // overrides settings if not null
 ) {
     SearchScreen(
         onClickBack = onClickBack,
         title = { Text(title) },
+        onQueryChange = onQueryChange,
         content = {
             if (content != null) content()
             else {
@@ -119,6 +121,7 @@ fun <T: Any?> SearchScreen(
     itemContent: @Composable (T) -> Unit,
     icon: @Composable (() -> Unit)? = null,
     menu: List<Pair<String, () -> Unit>>? = null,
+    onQueryChange: ((String) -> Unit)? = null,
     content: @Composable (ColumnScope.() -> Unit)? = null,
 ) {
     // searchText and showSearch should have the same remember or rememberSaveable
@@ -180,7 +183,7 @@ fun <T: Any?> SearchScreen(
                         expanded = showSearch,
                         onDismiss = { setShowSearch(false) },
                         search = searchText,
-                        onSearchChange = { searchText = it },
+                        onSearchChange = { searchText = it; onQueryChange?.invoke(it.text) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
