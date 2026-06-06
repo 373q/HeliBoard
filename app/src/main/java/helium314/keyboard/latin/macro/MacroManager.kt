@@ -113,12 +113,13 @@ object MacroManager {
             if (capsOn) msg = msg.uppercase()
             index++
 
-            for (char in msg) {
+            for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 withContext(Dispatchers.Main) {
                     listener?.onMacroTypeChar(char)
                 }
-                delay(charDelay)
+                // First character gets 90ms fixed delay, rest use the configured delay
+                delay(if (charIndex == 0) 90L else charDelay)
             }
 
             if (!isRunning) return
