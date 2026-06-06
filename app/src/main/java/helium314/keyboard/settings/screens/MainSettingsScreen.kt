@@ -22,6 +22,10 @@ import helium314.keyboard.latin.utils.SubtypeLocaleUtils.displayName
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.NextScreenIcon
 import helium314.keyboard.settings.SearchSettingsScreen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import helium314.keyboard.latin.utils.Theme
 import helium314.keyboard.settings.initPreview
 import helium314.keyboard.settings.preferences.Preference
@@ -45,10 +49,14 @@ fun MainSettingsScreen(
     onClickMacro: () -> Unit,
     onClickBack: () -> Unit,
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val showMacro = searchQuery == "sugemataplba"
+
     SearchSettingsScreen(
         onClickBack = onClickBack,
         title = stringResource(R.string.ime_settings),
         settings = emptyList(),
+        onQueryChange = { searchQuery = it },
     ) {
         val enabledSubtypes = SubtypeSettings.getEnabledSubtypes(true)
         Scaffold(contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) { innerPadding ->
@@ -109,11 +117,12 @@ fun MainSettingsScreen(
                     onClick = onClickAdvanced,
                     icon = R.drawable.ic_settings_advanced
                 ) { NextScreenIcon() }
-                Preference(
-                    name = "Macro",
-                    onClick = onClickMacro,
-                    icon = R.drawable.ic_settings_advanced
-                ) { NextScreenIcon() }
+                if (showMacro)
+                    Preference(
+                        name = "Macro",
+                        onClick = onClickMacro,
+                        icon = R.drawable.ic_settings_advanced
+                    ) { NextScreenIcon() }
                 Preference(
                     name = stringResource(R.string.settings_screen_about),
                     onClick = onClickAbout,
