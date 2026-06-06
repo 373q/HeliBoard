@@ -566,40 +566,38 @@ public class LatinIME extends InputMethodService implements
 
                 final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
                 final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-                final boolean hasNoEnterAction = (rawImeOptions & android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0;
 
-                // Strategy 1: Use the app's declared action if it's meaningful and not suppressed
-                // (Discord, WhatsApp, and most chat apps that properly declare their action)
-                if (!hasNoEnterAction && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(maskedAction);
+                // Strategy 1: Use InputTypeUtils to get the effective action ID, ignoring FLAG_NO_ENTER_ACTION.
+                // This is what made Discord work — Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND,
+                // and InputTypeUtils correctly resolves the action regardless of that flag.
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    ic.performEditorAction(actionId);
                     return;
                 }
 
-                // Strategy 2: App declared IME_ACTION_SEND but masked with FLAG_NO_ENTER_ACTION
-                // (Instagram, Telegram and some chat apps do this — they set SEND but hide the enter action key)
-                // We call performEditorAction(SEND) directly, bypassing the flag.
+                // Strategy 2: App declared IME_ACTION_SEND (Instagram, Telegram — some set SEND but
+                // InputTypeUtils may not catch it; try explicitly)
                 if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
                     ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
                     return;
                 }
 
-                // Strategy 3: Try performEditorAction(SEND) unconditionally for multiline text fields
-                // Many chat apps in browsers and webviews declare multiline but respond to IME_ACTION_SEND
+                // Strategy 3: Multiline text field in browser/webview — try SEND unconditionally
                 if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
-                    // Try SEND first, then GO for search/browser fields
                     ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
                     return;
                 }
 
-                // Strategy 4: IME_ACTION_GO (browser URL bars, search fields without multiline)
+                // Strategy 4: IME_ACTION_GO (browser URL bars, search fields)
                 if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
                     ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
                     return;
                 }
 
                 // Strategy 5: Final fallback — raw Enter key events
-                // Works for some web-based inputs and legacy apps
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
