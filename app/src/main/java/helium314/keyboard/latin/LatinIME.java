@@ -560,19 +560,15 @@ public class LatinIME extends InputMethodService implements
             public void onMacroSendMessage() {
                 mInputLogic.finishInput();
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
 
-                final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
-                // Read maskedAction directly — intentionally bypass FLAG_NO_ENTER_ACTION.
-                // Discord sets FLAG_NO_ENTER_ACTION + IME_ACTION_SEND; InputTypeUtils returns NONE for that,
-                // but we want to send anyway. Reading maskedAction directly gives us IME_ACTION_SEND for Discord.
-                final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-
-                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    // Covers Discord (SEND), Instagram (SEND), Telegram (SEND), browsers (GO), etc.
-                    ic.performEditorAction(maskedAction);
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    // Covers Discord (SEND via AppWorkarounds), Instagram, Telegram, WhatsApp, browsers (GO)
+                    ic.performEditorAction(actionId);
                     return;
                 }
 
@@ -582,7 +578,7 @@ public class LatinIME extends InputMethodService implements
                     return;
                 }
 
-                // Final fallback — raw Enter key events (legacy apps, some browsers)
+                // Final fallback — raw Enter key events
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                 ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
