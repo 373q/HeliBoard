@@ -563,6 +563,12 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         } else if (wasClipboard) {
             setClipboardKeyboard();
         }
+        // Apply visual feedback settings immediately so they take effect without needing
+        // to close/reopen the keyboard (fixes toggle not working until restart)
+        final MainKeyboardView kv = getMainKeyboardView();
+        if (kv != null) {
+            kv.setKeyPreviewPopupEnabled(Settings.getValues().mKeyPreviewPopupOn);
+        }
     }
 
     /**
