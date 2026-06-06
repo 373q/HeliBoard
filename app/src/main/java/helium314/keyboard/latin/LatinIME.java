@@ -538,25 +538,22 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                // Check if we're in one-shot (manual) shift BEFORE typing
-                final helium314.keyboard.keyboard.Keyboard kbBefore = mKeyboardSwitcher.getKeyboard();
-                final boolean wasOneShot = kbBefore != null
-                        && kbBefore.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_MANUAL_SHIFTED;
+                // Read current shift state before typing
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                final boolean isShifted = kb != null && kb.mId.isAlphabetShifted();
 
-                onCodeInput((int) c, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
-
-                // If it was one-shot shift, send SHIFT to go back to unshifted
-                if (wasOneShot) {
-                    onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.SHIFT,
-                            Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
-                }
+                // If keyboard is shifted, send uppercase version of the character
+                final int codeToSend = isShifted ? Character.toUpperCase((int) c) : (int) c;
+                onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
+                // after typing a letter — no need to send KeyCode.SHIFT manually.
 
                 // Show key preview if enabled
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
-                    final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
-                    if (kb != null) {
-                        final helium314.keyboard.keyboard.Key key = kb.getKey((int) c);
+                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                    if (kb2 != null) {
+                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
                         if (key != null) {
                             kv.onKeyPressed(key, true);
                             kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
