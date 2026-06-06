@@ -554,11 +554,22 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
-                // Commit any composing text first (chars typed one-by-one are in composing state).
-                // Without this, Discord/Telegram and other apps may not see the text as committed
-                // when performEditorAction fires.
+                // Commit composing text first
                 mInputLogic.finishInput();
-                onCodeInput(Constants.CODE_ENTER, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Use the same logic as pressing Enter: check EditorInfo for the correct action
+                // This works correctly in Discord, Telegram, WhatsApp etc.
+                final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
+                final int actionId = helium314.keyboard.latin.inputlogic.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
+                    getCurrentInputConnection().performEditorAction(actionId);
+                } else {
+                    // Fallback: send Enter keyevent directly
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                }
             }
             @Override
             public void onMacroPasteText(String text) {
