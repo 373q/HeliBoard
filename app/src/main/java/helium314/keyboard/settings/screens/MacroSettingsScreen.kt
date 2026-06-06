@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,14 +31,13 @@ import helium314.keyboard.settings.preferences.SliderPreference
 @Composable
 fun MacroSettingsScreen(onClickBack: () -> Unit) {
     val ctx = LocalContext.current
-    var messageCount by remember { mutableStateOf(MacroManager.getMessageCount(ctx)) }
-    var statusText by remember { mutableStateOf(if (MacroManager.isRunning()) "Running" else "Stopped") }
+    var messageCount by remember { mutableIntStateOf(MacroManager.getMessageCount(ctx)) }
+    var isRunning by remember { mutableStateOf(MacroManager.isRunning()) }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != Activity.RESULT_OK) return@rememberLauncherForActivityResult
         val uri = result.data?.data ?: return@rememberLauncherForActivityResult
-        val ok = MacroManager.importFile(ctx, uri)
-        if (ok) {
+        if (MacroManager.importFile(ctx, uri)) {
             messageCount = MacroManager.getMessageCount(ctx)
         }
     }
@@ -49,7 +49,7 @@ fun MacroSettingsScreen(onClickBack: () -> Unit) {
     ) {
         Scaffold(contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) { innerPadding ->
             Column(
-                Modifier.verticalScroll(rememberScrollState()).then(Modifier.padding(innerPadding))
+                Modifier.verticalScroll(rememberScrollState()).padding(innerPadding)
             ) {
                 Preference(
                     name = "Import messages file (.txt)",
@@ -86,11 +86,11 @@ fun MacroSettingsScreen(onClickBack: () -> Unit) {
                     stepSize = 100,
                 )
                 Preference(
-                    name = if (MacroManager.isRunning()) "Stop Macro" else "Start Macro",
-                    description = statusText,
+                    name = if (isRunning) "Stop Macro" else "Start Macro",
+                    description = if (isRunning) "Running" else "Stopped",
                     onClick = {
                         MacroManager.toggle(ctx)
-                        statusText = if (MacroManager.isRunning()) "Running" else "Stopped"
+                        isRunning = MacroManager.isRunning()
                     }
                 )
             }
