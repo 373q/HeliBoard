@@ -538,7 +538,19 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
+                // Check if we're in one-shot (manual) shift BEFORE typing
+                final helium314.keyboard.keyboard.Keyboard kbBefore = mKeyboardSwitcher.getKeyboard();
+                final boolean wasOneShot = kbBefore != null
+                        && kbBefore.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_MANUAL_SHIFTED;
+
                 onCodeInput((int) c, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+
+                // If it was one-shot shift, send SHIFT to go back to unshifted
+                if (wasOneShot) {
+                    onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.SHIFT,
+                            Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                }
+
                 // Show key preview if enabled
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
