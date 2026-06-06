@@ -538,15 +538,10 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                // Read current shift state before typing
-                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
-                final boolean isShifted = kb != null && kb.mId.isAlphabetShifted();
-
-                // If keyboard is shifted, send uppercase version of the character
-                final int codeToSend = isShifted ? Character.toUpperCase((int) c) : (int) c;
+                // MacroManager already applies caps/lowercase per-character based on isCapsLocked().
+                // We send the character exactly as received, as a raw code input (no shift state applied).
+                final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
-                // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
-                // after typing a letter — no need to send KeyCode.SHIFT manually.
 
                 // Show key preview if enabled
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
@@ -566,43 +561,47 @@ public class LatinIME extends InputMethodService implements
                 // Commit composing text first
                 mInputLogic.finishInput();
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
-                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
 
-                boolean sent = false;
+                final int rawImeOptions = editorInfo != null ? editorInfo.imeOptions : 0;
+                final int maskedAction = rawImeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+                final boolean hasNoEnterAction = (rawImeOptions & android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION) != 0;
 
-                // 1. Try performEditorAction with detected action (works in Discord app, WhatsApp etc.)
-                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && actionId != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    ic.performEditorAction(actionId);
-                    sent = true;
+                // Strategy 1: Use the app's declared action if it's meaningful and not suppressed
+                // (Discord, WhatsApp, and most chat apps that properly declare their action)
+                if (!hasNoEnterAction && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                    ic.performEditorAction(maskedAction);
+                    return;
                 }
 
-                if (!sent) {
-                    // 2. Try IME_ACTION_SEND explicitly (Instagram, Telegram, many chat apps)
-                    if ((editorInfo != null) && ((editorInfo.imeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION)
-                            == android.view.inputmethod.EditorInfo.IME_ACTION_SEND)) {
-                        ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-                        sent = true;
-                    }
+                // Strategy 2: App declared IME_ACTION_SEND but masked with FLAG_NO_ENTER_ACTION
+                // (Instagram, Telegram and some chat apps do this — they set SEND but hide the enter action key)
+                // We call performEditorAction(SEND) directly, bypassing the flag.
+                if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_SEND) {
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                    return;
                 }
 
-                if (!sent) {
-                    // 3. Try IME_ACTION_GO (browsers, search fields)
-                    if ((editorInfo != null) && ((editorInfo.imeOptions & android.view.inputmethod.EditorInfo.IME_MASK_ACTION)
-                            == android.view.inputmethod.EditorInfo.IME_ACTION_GO)) {
-                        ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
-                        sent = true;
-                    }
+                // Strategy 3: Try performEditorAction(SEND) unconditionally for multiline text fields
+                // Many chat apps in browsers and webviews declare multiline but respond to IME_ACTION_SEND
+                if (editorInfo != null && (editorInfo.inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
+                    // Try SEND first, then GO for search/browser fields
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                    return;
                 }
 
-                if (!sent) {
-                    // 4. Fallback: send Enter key event (works in browsers and web-based inputs)
-                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                // Strategy 4: IME_ACTION_GO (browser URL bars, search fields without multiline)
+                if (maskedAction == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+                    return;
                 }
+
+                // Strategy 5: Final fallback — raw Enter key events
+                // Works for some web-based inputs and legacy apps
+                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
             }
             @Override
             public void onMacroPasteText(String text) {
@@ -625,6 +624,16 @@ public class LatinIME extends InputMethodService implements
             public boolean isShifted() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && kb.mId.isAlphabetShifted();
+            }
+            @Override
+            public boolean isCapsLocked() {
+                // Returns true only if shift is LOCKED (caps lock), not one-shot shift.
+                // This way, disabling caps lock mid-macro will immediately switch to lowercase.
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                if (kb == null) return false;
+                final int elementId = kb.mId.mElementId;
+                return elementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
+                        || elementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED;
             }
             @Override
             public String getCurrentInputText() {
