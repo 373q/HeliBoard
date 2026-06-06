@@ -37,8 +37,6 @@ object MacroManager {
         fun isShifted(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
-        /** Returns true if caps lock is currently active (shift locked, not just one-shot shift) */
-        fun isCapsLocked(): Boolean
     }
 
     fun isRunning() = isRunning
@@ -55,6 +53,7 @@ object MacroManager {
             return
         }
         isRunning = true
+        val startedShifted = listener?.isShifted() ?: false
 
         // Capture current input field text
         val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
@@ -72,7 +71,7 @@ object MacroManager {
         listener?.onMacroStart(inputPrefix != null || isBoldMode)
 
         typingJob = scope.launch {
-            runMacro(context, messages.toMutableList())
+            runMacro(context, messages.toMutableList(), startedShifted)
         }
     }
 
@@ -84,7 +83,7 @@ object MacroManager {
         isBoldMode = false
     }
 
-    private suspend fun runMacro(context: Context, messages: MutableList<String>) {
+    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
         val prefs = context.prefs()
         messages.shuffle()
         var index = 0
@@ -107,9 +106,8 @@ object MacroManager {
                 index = 0
             }
 
-            // Read caps for prefix (snapshot at prefix-paste time)
-            val capsOnForPrefix = listener?.isCapsLocked() ?: false
-            val msg = messages[index]
+            var msg = messages[index]
+            if (capsOn) msg = msg.uppercase()
             index++
 
             val isFirstMsg = index == 1
@@ -122,7 +120,7 @@ object MacroManager {
             if (!isFirstMsg) {
                 // Paste prefix if exists
                 if (needsPrefix) {
-                    val p = if (capsOnForPrefix) prefix!!.uppercase() else prefix!!
+                    val p = if (capsOn) prefix!!.uppercase() else prefix!!
                     withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
                     delay(150)
                     if (!isRunning) return
@@ -142,7 +140,7 @@ object MacroManager {
             }
 
             // Type the message with ramp-up delays
-            // isShifted() covers both one-shot shift and caps lock — keyboard resets one-shot after each char automatically
+            // isShifted() per-character handles both one-shot shift (resets after first char) and caps lock
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val shiftedNow = listener?.isShifted() ?: false
