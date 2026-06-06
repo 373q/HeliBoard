@@ -563,38 +563,21 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroSendMessage() {
+                // Commit composing text first
                 mInputLogic.finishInput();
+                // Use the same logic as pressing Enter: check EditorInfo for the correct action
+                // This works correctly in Discord, Telegram, WhatsApp etc.
                 final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
-                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
-                if (ic == null) return;
-
-                final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
-                        & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-
-                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    // Citim textul din camp inainte de performEditorAction
-                    final android.view.inputmethod.ExtractedText before = ic.getExtractedText(
-                            new android.view.inputmethod.ExtractedTextRequest(), 0);
-                    final String textBefore = before != null && before.text != null ? before.text.toString() : null;
-
-                    ic.performEditorAction(maskedAction);
-
-                    // Citim textul dupa — daca s-a schimbat, inseamna ca app-ul a raspuns (Instagram, Telegram)
-                    // Daca e la fel, app-ul a ignorat (Discord) — trimitem Enter brut
-                    final android.view.inputmethod.ExtractedText after = ic.getExtractedText(
-                            new android.view.inputmethod.ExtractedTextRequest(), 0);
-                    final String textAfter = after != null && after.text != null ? after.text.toString() : null;
-
-                    if (textBefore != null && textBefore.equals(textAfter)) {
-                        // performEditorAction ignorat — fallback Enter brut (Discord)
-                        ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                        ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
-                    }
+                final int actionId = helium314.keyboard.latin.utils.InputTypeUtils
+                        .getImeOptionsActionIdFromEditorInfo(editorInfo);
+                if (actionId != android.view.inputmethod.EditorInfo.IME_ACTION_NONE) {
+                    getCurrentInputConnection().performEditorAction(actionId);
                 } else {
-                    // Niciun action declarat — Enter brut direct (web, browsere)
-                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                    // Fallback: send Enter keyevent directly
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                    getCurrentInputConnection().sendKeyEvent(
+                            new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
                 }
             }
             @Override
