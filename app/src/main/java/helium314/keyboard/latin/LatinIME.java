@@ -575,18 +575,8 @@ public class LatinIME extends InputMethodService implements
                     ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                     ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
                 } else {
-                    // Instagram, Telegram, WhatsApp etc
-                    // Incercam maskedAction, daca nu e declarat nimic incercam SEND direct
-                    final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
-                            & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
-                    if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                            && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                        ic.performEditorAction(maskedAction);
-                    } else {
-                        // Niciun action declarat — incercam IME_ACTION_SEND direct
-                        // Instagram si Telegram raspund la asta chiar fara sa il declare explicit
-                        ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-                    }
+                    // Instagram, Telegram, WhatsApp etc — fortat IME_ACTION_SEND direct
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
                 }
             }
             @Override
