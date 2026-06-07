@@ -568,40 +568,23 @@ public class LatinIME extends InputMethodService implements
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
 
-                final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
-                        & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+                final String pkg = editorInfo != null ? editorInfo.packageName : null;
 
-                if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
-                        && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
-                    final android.view.inputmethod.ExtractedTextRequest req =
-                            new android.view.inputmethod.ExtractedTextRequest();
-                    final android.view.inputmethod.ExtractedText before = ic.getExtractedText(req, 0);
-                    final String textBefore = (before != null && before.text != null)
-                            ? before.text.toString() : null;
-
-                    ic.performEditorAction(maskedAction);
-
-                    // Daca app-ul nu expune textul (Instagram, WhatsApp returneaza null la getExtractedText)
-                    // presupunem ca performEditorAction a functionat si nu trimitem Enter brut.
-                    // Daca textul e disponibil si nu s-a schimbat (Discord) -> Enter brut.
-                    if (textBefore != null) {
-                        final android.view.inputmethod.ExtractedText after = ic.getExtractedText(req, 0);
-                        final String textAfter = (after != null && after.text != null)
-                                ? after.text.toString() : null;
-                        if (textBefore.equals(textAfter)) {
-                            // performEditorAction ignorat -> Enter brut (Discord)
-                            ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
-                            ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
-                            // Discord poate inchide tastatura dupa Enter brut — o redeschidem
-                            showWindow(true);
-                        }
-                        // altfel textul s-a golit -> trimis cu succes (nu mai trimitem nimic)
-                    }
-                    // textBefore == null -> app nu expune textul -> presupunem trimis cu succes
-                } else {
-                    // Niciun action declarat -> Enter brut direct
+                if (helium314.keyboard.compat.AppWorkarounds.INSTANCE.usesEnterForSend(pkg)) {
+                    // Discord si clientii pe baza lui — folosesc Enter brut pentru send
                     ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
                     ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                } else {
+                    // Instagram, Telegram, WhatsApp etc — performEditorAction cu maskedAction
+                    final int maskedAction = (editorInfo != null ? editorInfo.imeOptions : 0)
+                            & android.view.inputmethod.EditorInfo.IME_MASK_ACTION;
+                    if (maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_NONE
+                            && maskedAction != android.view.inputmethod.EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        ic.performEditorAction(maskedAction);
+                    } else {
+                        ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                        ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                    }
                 }
             }
             @Override
