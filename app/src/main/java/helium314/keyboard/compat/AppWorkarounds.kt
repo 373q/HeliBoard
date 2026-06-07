@@ -28,6 +28,14 @@ object AppWorkarounds {
         }
     }
 
+    // Apps that respond to raw Enter key for sending messages instead of performEditorAction
+    fun usesEnterForSend(packageName: String?): Boolean {
+        return when (packageName) {
+            "com.discord", "com.hammerandchisel.discord" -> true
+            else -> false
+        }
+    }
+
     fun adjustImeOptions(imeOptions: Int, packageName: String?): Int {
         return when (packageName) {
             // Looks like Google decided to set inputType multiline and imeOptions no_enter_action
