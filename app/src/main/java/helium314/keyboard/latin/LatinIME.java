@@ -538,12 +538,10 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                // Read current shift state before typing
-                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
-                final boolean isShifted = kb != null && kb.mId.isAlphabetShifted();
-
-                // If keyboard is shifted, send uppercase version of the character
-                final int codeToSend = isShifted ? Character.toUpperCase((int) c) : (int) c;
+                // MacroManager already decides the correct case via isCapsLocked().
+                // Do NOT apply shift here — doing so would double-uppercase or
+                // override the lowercase when the user manually turns off caps.
+                final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
                 // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
                 // after typing a letter — no need to send KeyCode.SHIFT manually.
@@ -610,7 +608,7 @@ public class LatinIME extends InputMethodService implements
             @Override
             public boolean isCapsLocked() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
-                return kb != null && kb.mId.isAlphabetShiftLocked();
+                return kb != null && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
             }
             @Override
             public String getCurrentInputText() {
