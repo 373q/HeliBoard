@@ -68,6 +68,12 @@ object MacroManager {
             rawInput
         }
 
+        // Copiaza prefixul in clipboard ca sa poata fi lipit rapid la mesajele urmatoare
+        inputPrefix?.let { prefix ->
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
+        }
+
         listener?.onMacroStart(inputPrefix != null || isBoldMode)
 
         typingJob = scope.launch {
@@ -140,11 +146,10 @@ object MacroManager {
             }
 
             // Type the message with ramp-up delays
-            // isShifted() per-character handles both one-shot shift (resets after first char) and caps lock
+            // capsOn e capturat la start si e stabil — nu se reseteaza la switch keyboard (bold)
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
-                val shiftedNow = listener?.isShifted() ?: false
-                val charToType = if (shiftedNow) char.uppercaseChar() else char.lowercaseChar()
+                val charToType = if (capsOn) char.uppercaseChar() else char.lowercaseChar()
                 withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 val d = when (charIndex) {
                     0 -> 120L
