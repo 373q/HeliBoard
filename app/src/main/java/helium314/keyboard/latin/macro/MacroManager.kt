@@ -168,6 +168,8 @@ object MacroManager {
 
             // Type closing ** if bold mode — switch to symbols, type **, switch back
             if (isBoldMode) {
+                // Retine caps state inainte de switch la symbols (switch-ul il reseteaza)
+                val capsBeforeClose = listener?.isCapsLocked() ?: false
                 withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(true) }
                 delay(charDelay)
                 for (char in "**") {
@@ -177,6 +179,11 @@ object MacroManager {
                 }
                 withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(false) }
                 delay(charDelay)
+                // Re-aplica caps dupa switch back — Android/HeliBoard reseteaza shift-ul
+                if (capsBeforeClose) {
+                    withContext(Dispatchers.Main) { listener?.onMacroCapsState(true) }
+                    delay(charDelay)
+                }
             }
 
             if (!isRunning) return
