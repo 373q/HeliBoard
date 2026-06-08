@@ -590,6 +590,12 @@ public class LatinIME extends InputMethodService implements
                 }
             }
             @Override
+            public void onMacroCapsState(boolean capsOn) {
+                if (capsOn) {
+                    mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                }
+            }
+            @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
                 int code = toSymbols
                         ? helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.SYMBOL
