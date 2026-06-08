@@ -154,7 +154,8 @@ object MacroManager {
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
-                val charToType = if (capsNow) char.uppercaseChar() else char.lowercaseChar()
+                val shiftedNow = listener?.isShifted() ?: false
+                val charToType = if (capsNow || shiftedNow) char.uppercaseChar() else char.lowercaseChar()
                 withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 val d = when (charIndex) {
                     0 -> 120L
