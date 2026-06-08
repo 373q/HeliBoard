@@ -36,6 +36,7 @@ object MacroManager {
         fun onMacroSwitchKeyboard(toSymbols: Boolean)
         fun onMacroCapsState(capsOn: Boolean)
         fun isShifted(): Boolean
+        fun isCapsLocked(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
     }
@@ -148,10 +149,12 @@ object MacroManager {
             }
 
             // Type the message with ramp-up delays
-            // capsOn e capturat la start si e stabil — nu se reseteaza la switch keyboard (bold)
+            // isCapsLocked() per caracter — reflecta starea reala a tastaturii
+            // daca userul dezactiveaza caps manual, scrie lowercase imediat
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
-                val charToType = if (capsOn) char.uppercaseChar() else char.lowercaseChar()
+                val capsNow = listener?.isCapsLocked() ?: false
+                val charToType = if (capsNow) char.uppercaseChar() else char.lowercaseChar()
                 withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 val d = when (charIndex) {
                     0 -> 120L
