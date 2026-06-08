@@ -608,6 +608,11 @@ public class LatinIME extends InputMethodService implements
                 return kb != null && kb.mId.isAlphabetShifted();
             }
             @Override
+            public boolean isCapsLocked() {
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                return kb != null && kb.mId.isAlphabetShiftLocked();
+            }
+            @Override
             public String getCurrentInputText() {
                 final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
