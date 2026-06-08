@@ -34,6 +34,7 @@ object MacroManager {
         fun onMacroPasteText(text: String)
         fun onMacroStart(hasPrefix: Boolean)
         fun onMacroSwitchKeyboard(toSymbols: Boolean)
+        fun onMacroCapsState(capsOn: Boolean)
         fun isShifted(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
@@ -75,6 +76,7 @@ object MacroManager {
         }
 
         listener?.onMacroStart(inputPrefix != null || isBoldMode)
+        listener?.onMacroCapsState(startedShifted)
 
         typingJob = scope.launch {
             runMacro(context, messages.toMutableList(), startedShifted)
