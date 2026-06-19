@@ -9,10 +9,13 @@ import helium314.keyboard.latin.utils.prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.Executors
 
 object MacroManager {
 
@@ -21,10 +24,23 @@ object MacroManager {
 
     private var typingJob: Job? = null
     private var isRunning = false
-    private val scope = CoroutineScope(Dispatchers.Default)
+
+    // Thread dedicat, separat de pool-ul Dispatchers.Default (care e shared cu restul app-ului).
+    // Ridicam prioritatea threadului ca timing-ul macro-ului sa nu fie afectat de alte task-uri
+    // sau de GC pauses cauzate de alte coroutine care ruleaza pe acelasi pool.
+    private val macroExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "MacroTypingThread").apply {
+            priority = Thread.MAX_PRIORITY
+        }
+    }
+    private val macroDispatcher = macroExecutor.asCoroutineDispatcher()
+    private val scope = CoroutineScope(macroDispatcher)
 
     private var inputPrefix: String? = null
     private var isBoldMode = false
+
+    // Cache-ul mesajelor — incarcate o singura data la start, nu la fiecare iteratie din loop
+    private var cachedMessages: List<String> = emptyList()
 
     var listener: MacroListener? = null
 
@@ -49,15 +65,11 @@ object MacroManager {
 
     fun start(context: Context) {
         if (isRunning) return
-        val messages = loadMessages(context)
-        if (messages.isEmpty()) {
-            Log.w(TAG, "No messages to send")
-            return
-        }
         isRunning = true
+
         val startedShifted = listener?.isShifted() ?: false
 
-        // Capture current input field text
+        // Capture current input field text (trebuie pe Main thread, inainte de coroutine)
         val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
 
         // Detect bold mode: input ends with **
@@ -80,6 +92,20 @@ object MacroManager {
         listener?.onMacroCapsState(startedShifted)
 
         typingJob = scope.launch {
+            // Pornim delay-ul de start in paralel cu incarcarea fisierului — daca userul a pus
+            // 0ms, nu vrem ca parse-ul unui fisier de 15MB+ sa adauge un delay "ascuns" la start.
+            val startDelay = context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
+            val startDelayDeferred = async { delay(startDelay) }
+            // Incarca mesajele pe thread IO — evita lag-ul pe fisiere mari (15MB+)
+            val messages = withContext(Dispatchers.IO) { loadMessages(context) }
+            if (messages.isEmpty()) {
+                Log.w(TAG, "No messages to send")
+                isRunning = false
+                startDelayDeferred.cancel()
+                return@launch
+            }
+            cachedMessages = messages
+            startDelayDeferred.await()
             runMacro(context, messages.toMutableList(), startedShifted)
         }
     }
@@ -90,24 +116,20 @@ object MacroManager {
         typingJob = null
         inputPrefix = null
         isBoldMode = false
+        cachedMessages = emptyList()
     }
 
     private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
         val prefs = context.prefs()
+        // Citim delay-urile o data la start — daca userul le schimba in timp ce ruleaza, se aplica la urmatoarea pornire
+        val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
+        val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
+        // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
+
         messages.shuffle()
         var index = 0
-        var isFirst = true
 
         while (isRunning) {
-            val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
-            val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
-            val startDelay = prefs.getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
-
-            if (isFirst) {
-                delay(startDelay)
-                isFirst = false
-            }
-
             if (!isRunning) return
 
             if (index >= messages.size) {
@@ -208,10 +230,28 @@ object MacroManager {
         val file = getMacroFile(context)
         if (!file.exists()) return emptyList()
         return try {
-            file.readText()
-                .split(Regex("\n\n+|\r\n\r\n+"))
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
+            // Citim linie cu linie si grupam pe linii goale, in loc sa tinem tot fisierul
+            // ca un singur String urias + un array de rezultate Regex.split (foarte costisitor
+            // pe heap pentru fisiere de 15MB+, declanseaza GC frecvent care intarzie delay()-urile
+            // din macro chiar daca delay-ul setat e mic).
+            val messages = ArrayList<String>()
+            val current = StringBuilder()
+            file.bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    if (line.isBlank()) {
+                        if (current.isNotEmpty()) {
+                            messages.add(current.toString().trim())
+                            current.setLength(0)
+                        }
+                    } else {
+                        if (current.isNotEmpty()) current.append('\n')
+                        current.append(line)
+                    }
+                }
+            }
+            if (current.isNotEmpty()) messages.add(current.toString().trim())
+            messages.removeAll { it.isEmpty() }
+            messages
         } catch (e: Exception) {
             Log.e(TAG, "Error reading macro file", e)
             emptyList()
@@ -234,4 +274,7 @@ object MacroManager {
     fun getMacroFile(context: Context): File = File(context.filesDir, MACRO_FILE_NAME)
 
     fun getMessageCount(context: Context): Int = loadMessages(context).size
+
+    fun getMacroKeyword(context: Context): String =
+        context.prefs().getString(Settings.PREF_MACRO_KEYWORD, "macro1") ?: "macro1"
 }
