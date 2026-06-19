@@ -211,6 +211,7 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_MACRO_CHAR_DELAY = "macro_char_delay";
     public static final String PREF_MACRO_MSG_DELAY = "macro_msg_delay";
     public static final String PREF_MACRO_START_DELAY = "macro_start_delay";
+    public static final String PREF_MACRO_KEYWORD = "macro_keyword";
 
     private Context mContext;
     private SharedPreferences mPrefs;
