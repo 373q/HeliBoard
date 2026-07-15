@@ -102,6 +102,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 import helium314.keyboard.latin.macro.MacroManager;
+import helium314.keyboard.latin.macro.DumeMacroManager;
 
 /**
  * Input method implementation for Qwerty'ish keyboard.
@@ -609,6 +610,67 @@ public class LatinIME extends InputMethodService implements
             public boolean isCapsLocked() {
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
+            }
+            @Override
+            public String getCurrentInputText() {
+                final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
+                        helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
+                return text != null ? text.toString() : null;
+            }
+        });
+
+        // Register Dume macro listener — same implementation as Shift macro
+        DumeMacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
+            @Override
+            public void onMacroTypeChar(char c) {
+                final int codeToSend = (int) c;
+                onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            }
+            @Override
+            public void onMacroSendMessage() {
+                mInputLogic.finishInput();
+                final android.view.inputmethod.EditorInfo editorInfo = getCurrentInputEditorInfo();
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+
+                final String pkg = editorInfo != null ? editorInfo.packageName : null;
+
+                if (helium314.keyboard.compat.AppWorkarounds.INSTANCE.usesEnterForSend(pkg)) {
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, android.view.KeyEvent.KEYCODE_ENTER));
+                } else {
+                    ic.performEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+                }
+            }
+            @Override
+            public void onMacroPasteText(String text) {
+                onTextInput(text);
+            }
+            @Override
+            public void onMacroStart(boolean hasPrefix) { }
+            @Override
+            public void onMacroCapsState(boolean capsOn) {
+                if (capsOn) {
+                    mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                }
+            }
+            @Override
+            public void onMacroSwitchKeyboard(boolean toSymbols) {
+                int code = toSymbols
+                        ? helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.SYMBOL
+                        : helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.ALPHA;
+                onCodeInput(code, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            }
+            @Override
+            public boolean isShifted() {
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                return kb != null && kb.mId.isAlphabetShifted();
+            }
+            @Override
+            public boolean isCapsLocked() {
+                final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                return kb != null && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
+                        || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
             }
             @Override
             public String getCurrentInputText() {

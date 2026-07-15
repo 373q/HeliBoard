@@ -52,6 +52,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
 
     override fun onLongPressKey(primaryCode: Int) {
         if (primaryCode == KeyCode.MACRO_TOGGLE) return // no haptic, no feedback
+        if (primaryCode == KeyCode.DUME_TOGGLE) return // no haptic, no feedback
         metaOnLongPressKey(primaryCode)
         performHapticFeedback(HapticEvent.KEY_LONG_PRESS)
     }

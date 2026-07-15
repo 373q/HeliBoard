@@ -212,6 +212,13 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_MACRO_MSG_DELAY = "macro_msg_delay";
     public static final String PREF_MACRO_START_DELAY = "macro_start_delay";
     public static final String PREF_MACRO_KEYWORD = "macro_keyword";
+    // Legit mode (typo simulation)
+    public static final String PREF_SHIFT_LEGIT_MODE = "shift_legit_mode";
+    public static final String PREF_DUME_LEGIT_MODE = "dume_legit_mode";
+    // Dume macro
+    public static final String PREF_DUME_CHAR_DELAY = "dume_char_delay";
+    public static final String PREF_DUME_MSG_DELAY = "dume_msg_delay";
+    public static final String PREF_DUME_START_DELAY = "dume_start_delay";
 
     private Context mContext;
     private SharedPreferences mPrefs;

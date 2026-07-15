@@ -43,6 +43,7 @@ object KeyLabel {
     const val TIMESTAMP = "timestamp"
     const val EMOJI_SEARCH = "emoji_search"
     const val MACRO_TOGGLE = "macro_toggle"
+    const val DUME_TOGGLE = "dume_toggle"
 
     /** to make sure a FlorisBoard label works when reading a JSON layout */
     // resulting special labels should be names of FunctionalKey enum, case insensitive
@@ -116,6 +117,7 @@ object KeyLabel {
             TIMESTAMP -> "⌚"
             EMOJI_SEARCH -> "!icon/search_key|!code/key_emoji_search"
             MACRO_TOGGLE -> " |!code/key_macro_toggle"
+            DUME_TOGGLE -> " |!code/key_dume_toggle"
             else -> if (label in toolbarKeyStrings.values)
                 "!icon/$label|!code/${getCodeForToolbarKey(ToolbarKey.valueOf(label.uppercase(Locale.US)))}"
             else label

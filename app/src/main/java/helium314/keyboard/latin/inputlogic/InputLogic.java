@@ -66,6 +66,7 @@ import helium314.keyboard.latin.utils.TextPlacement;
 import helium314.keyboard.latin.utils.TextRange;
 import helium314.keyboard.latin.utils.TimestampKt;
 import helium314.keyboard.latin.macro.MacroManager;
+import helium314.keyboard.latin.macro.DumeMacroManager;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -461,6 +462,20 @@ public final class InputLogic {
         }
         mLastKeyTime = inputTransaction.getTimestamp();
         mConnection.beginBatchEdit();
+
+        // Normal press SPACE stops Shift macro if it is running (long-press starts it)
+        if (processedEvent.getCodePoint() == Constants.CODE_SPACE && MacroManager.INSTANCE.isRunning()) {
+            MacroManager.INSTANCE.stop();
+            mConnection.endBatchEdit();
+            return inputTransaction;
+        }
+        // Normal press COMMA stops Dume macro if it is running (long-press starts it)
+        if (processedEvent.getCodePoint() == Constants.CODE_COMMA && DumeMacroManager.INSTANCE.isRunning()) {
+            DumeMacroManager.INSTANCE.stop();
+            mConnection.endBatchEdit();
+            return inputTransaction;
+        }
+
         if (!mWordComposer.isComposingWord()) {
             // TODO: is this useful? It doesn't look like it should be done here, but rather after
             // a word is committed.
@@ -831,6 +846,9 @@ public final class InputLogic {
                 break;
             case KeyCode.MACRO_TOGGLE:
                 MacroManager.INSTANCE.toggle(mLatinIME);
+                break;
+            case KeyCode.DUME_TOGGLE:
+                DumeMacroManager.INSTANCE.toggle(mLatinIME);
                 break;
             case KeyCode.SYSTEM_INPUT_METHOD_PICKER:
                 mLatinIME.showInputPickerDialog();

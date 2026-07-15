@@ -55,6 +55,13 @@ object MacroManager {
         fun isCapsLocked(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
+        /**
+         * Apasă backspace o singură dată — folosit de Legit Mode pentru a șterge
+         * caracterul greșit înainte de corectare. Implementarea implicită trimite
+         * caracterul BS (0x08) prin onMacroTypeChar; suprascrie în keyboard service
+         * dacă ai nevoie de KeyCode.DELETE direct.
+         */
+        fun onMacroDeleteChar() { onMacroTypeChar('\b') }
     }
 
     fun isRunning() = isRunning
@@ -124,6 +131,7 @@ object MacroManager {
         // Citim delay-urile o data la start — daca userul le schimba in timp ce ruleaza, se aplica la urmatoarea pornire
         val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
         val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
+        val legitMode = prefs.getBoolean(Settings.PREF_SHIFT_LEGIT_MODE, false)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
@@ -131,6 +139,16 @@ object MacroManager {
 
         while (isRunning) {
             if (!isRunning) return
+
+            // Auto-stop: dacă tastatura a dispărut / nu mai există câmp de input activ
+            val inputAvailable = withContext(Dispatchers.Main) {
+                listener?.getCurrentInputText() != null
+            }
+            if (!inputAvailable) {
+                Log.w(TAG, "Shift: input unavailable, stopping macro")
+                isRunning = false
+                return
+            }
 
             if (index >= messages.size) {
                 messages.shuffle()
@@ -146,19 +164,14 @@ object MacroManager {
             val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg
 
             // Build what to type before the message content
-            // First message: prefix is already in field (possibly with **), just type msg + ** (if bold)
-            // Later messages: paste prefix (if any), type ** (if bold), type msg, type **
             if (!isFirstMsg) {
-                // Paste prefix if exists
                 if (needsPrefix) {
                     val p = if (capsOn) prefix!!.uppercase() else prefix!!
                     withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
                     delay(150)
                     if (!isRunning) return
                 }
-                // Type opening ** if bold mode — switch to symbols, type **, switch back
                 if (isBoldMode) {
-                    // Retine caps state inainte de switch (switch-ul il reseteaza)
                     val capsBeforeOpen = listener?.isCapsLocked() ?: false
                     withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(true) }
                     delay(charDelay)
@@ -169,7 +182,6 @@ object MacroManager {
                     }
                     withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(false) }
                     delay(charDelay)
-                    // Re-aplica caps dupa switch back
                     if (capsBeforeOpen) {
                         withContext(Dispatchers.Main) { listener?.onMacroCapsState(true) }
                         delay(charDelay)
@@ -177,15 +189,25 @@ object MacroManager {
                 }
             }
 
-            // Type the message with ramp-up delays
-            // isCapsLocked() per caracter — reflecta starea reala a tastaturii
-            // daca userul dezactiveaza caps manual, scrie lowercase imediat
+            // Tipărește mesajul caracter cu caracter (cu Legit Mode dacă e activat)
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
                 val shiftedNow = listener?.isShifted() ?: false
                 val charToType = if (capsNow || shiftedNow) char.uppercaseChar() else char.lowercaseChar()
-                withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
+
+                if (legitMode && char.isLetter()) {
+                    LegitMode.typeCharWithPossibleTypo(
+                        correctChar = charToType,
+                        charDelay = charDelay,
+                        isRunning = { isRunning },
+                        typeChar = { c -> listener?.onMacroTypeChar(c) },
+                        deleteChar = { listener?.onMacroDeleteChar() }
+                    )
+                } else {
+                    withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
+                }
+
                 val d = when (charIndex) {
                     0 -> 120L
                     1 -> 100L
@@ -195,9 +217,8 @@ object MacroManager {
                 delay(d)
             }
 
-            // Type closing ** if bold mode — switch to symbols, type **, switch back
+            // Inchide ** la sfarsit (bold mode)
             if (isBoldMode) {
-                // Retine caps state inainte de switch la symbols (switch-ul il reseteaza)
                 val capsBeforeClose = listener?.isCapsLocked() ?: false
                 withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(true) }
                 delay(charDelay)
@@ -208,7 +229,6 @@ object MacroManager {
                 }
                 withContext(Dispatchers.Main) { listener?.onMacroSwitchKeyboard(false) }
                 delay(charDelay)
-                // Re-aplica caps dupa switch back — Android/HeliBoard reseteaza shift-ul
                 if (capsBeforeClose) {
                     withContext(Dispatchers.Main) { listener?.onMacroCapsState(true) }
                     delay(charDelay)

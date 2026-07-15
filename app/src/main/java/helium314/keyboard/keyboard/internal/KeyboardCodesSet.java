@@ -59,6 +59,7 @@ public final class KeyboardCodesSet {
         "key_emoji_search",
         "toggle_floating",
         "key_macro_toggle",
+        "key_dume_toggle",
     };
 
     private static final int[] DEFAULT = {
@@ -88,6 +89,7 @@ public final class KeyboardCodesSet {
         KeyCode.EMOJI_SEARCH,
         KeyCode.TOGGLE_FLOATING_WINDOW,
         KeyCode.MACRO_TOGGLE,
+        KeyCode.DUME_TOGGLE,
     };
 
     static {

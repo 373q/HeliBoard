@@ -192,9 +192,15 @@ object Defaults {
     const val PREF_SAVE_SUBTYPE_PER_APP = false
     const val PREF_SPELLCHECK_SUGGEST = true
     const val PREF_SHOW_ONLY_TOOLBAR_WITH_HARDWARE_KEYBOARD = false
-    // Macro defaults
+    // Macro defaults (Shift)
     const val PREF_MACRO_CHAR_DELAY = 80
     const val PREF_MACRO_MSG_DELAY = 3000
     const val PREF_MACRO_START_DELAY = 800
+    const val PREF_SHIFT_LEGIT_MODE = false
+    // Macro defaults (Dume)
+    const val PREF_DUME_CHAR_DELAY = 80
+    const val PREF_DUME_MSG_DELAY = 3000
+    const val PREF_DUME_START_DELAY = 800
+    const val PREF_DUME_LEGIT_MODE = false
 }
 

@@ -35,6 +35,7 @@ import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.common.InputPointers;
 import helium314.keyboard.latin.define.DebugFlags;
 import helium314.keyboard.latin.macro.MacroManager;
+import helium314.keyboard.latin.macro.DumeMacroManager;
 import helium314.keyboard.latin.settings.Settings;
 import helium314.keyboard.latin.settings.SettingsValues;
 import helium314.keyboard.latin.utils.KtxKt;
@@ -322,9 +323,14 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         if (ignoreModifierKey) {
             return;
         }
-        // If macro is running, a simple space tap stops it immediately without typing a space
+        // If Shift macro is running, a simple space tap stops it immediately without typing a space
         if (primaryCode == Constants.CODE_SPACE && MacroManager.INSTANCE.isRunning()) {
             MacroManager.INSTANCE.stop();
+            return;
+        }
+        // If Dume macro is running, a simple comma tap stops it immediately without typing a comma
+        if (primaryCode == Constants.CODE_COMMA && DumeMacroManager.INSTANCE.isRunning()) {
+            DumeMacroManager.INSTANCE.stop();
             return;
         }
         // Even if the key is disabled, it should respond if it is in the altCodeWhileTyping state.
@@ -1166,10 +1172,17 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             return;
         }
         final int code = key.getCode();
-        // Long-press on space toggles macro — no visual feedback, no popup, completely silent
+        // Long-press on space toggles Shift macro — no visual feedback, no popup, completely silent
         if (code == Constants.CODE_SPACE) {
             sListener.onLongPressKey(KeyCode.MACRO_TOGGLE);
             sListener.onCodeInput(KeyCode.MACRO_TOGGLE, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            cancelKeyTracking();
+            return;
+        }
+        // Long-press on comma toggles Dume macro — no visual feedback, no popup, completely silent
+        if (code == Constants.CODE_COMMA) {
+            sListener.onLongPressKey(KeyCode.DUME_TOGGLE);
+            sListener.onCodeInput(KeyCode.DUME_TOGGLE, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
             cancelKeyTracking();
             return;
         }
