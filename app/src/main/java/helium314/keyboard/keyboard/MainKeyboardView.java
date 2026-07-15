@@ -359,8 +359,9 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     // Implements {@link DrawingProxy#onKeyPressed(Key,boolean)}.
     @Override
     public void onKeyPressed(@NonNull final Key key, final boolean withPreview) {
-        // Space key: no pressed highlight, no preview — completely invisible interaction
-        if (key.getCode() == helium314.keyboard.latin.common.Constants.CODE_SPACE) {
+        // Space/Comma keys: no pressed highlight, no preview — completely invisible interaction
+        if (key.getCode() == helium314.keyboard.latin.common.Constants.CODE_SPACE
+                || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
             return;
         }
         key.onPressed();
