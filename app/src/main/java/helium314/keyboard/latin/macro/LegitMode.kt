@@ -82,16 +82,19 @@ object LegitMode {
         if (wrongChar != null) {
             // 1. Tipărește caracterul greșit
             withContext(Dispatchers.Main) { typeChar(wrongChar) }
-            // 2. Pauza scurtă — o corectare rapidă și "reală", nu una întinsă
-            delay(Random.nextLong(40L, 50L))
+            delay(40L)
             if (!isRunning()) return
-            // 3. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real)
+            // 2. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real) — 120ms
             withContext(Dispatchers.Main) { deleteChar() }
-            delay(Random.nextLong(40L, 50L))
+            delay(120L)
             if (!isRunning()) return
+            // 3. Tipărește caracterul corect — 100ms, apoi bucla apelantă revine la charDelay normal
+            withContext(Dispatchers.Main) { typeChar(correctChar) }
+            delay(100L)
+            return
         }
 
-        // 4. Tipărește caracterul corect — apoi bucla apelantă revine la charDelay normal
+        // Fără greșeală — tipărește direct caracterul corect
         withContext(Dispatchers.Main) { typeChar(correctChar) }
     }
 }
