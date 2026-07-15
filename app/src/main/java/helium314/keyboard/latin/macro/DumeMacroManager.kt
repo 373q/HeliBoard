@@ -174,6 +174,8 @@ object DumeMacroManager {
             }
 
             // Tipărește linia caracter cu caracter
+            // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
+            val typoBudget = LegitMode.TypoBudget()
             for ((charIndex, char) in line.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -184,6 +186,7 @@ object DumeMacroManager {
                     LegitMode.typeCharWithPossibleTypo(
                         correctChar = charToType,
                         charDelay = charDelay,
+                        budget = typoBudget,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }

@@ -200,6 +200,8 @@ object MacroManager {
             }
 
             // Tipărește mesajul caracter cu caracter (cu Legit Mode dacă e activat)
+            // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
+            val typoBudget = LegitMode.TypoBudget()
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -210,6 +212,7 @@ object MacroManager {
                     LegitMode.typeCharWithPossibleTypo(
                         correctChar = charToType,
                         charDelay = charDelay,
+                        budget = typoBudget,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }

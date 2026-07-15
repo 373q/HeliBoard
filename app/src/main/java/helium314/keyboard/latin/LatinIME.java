@@ -622,8 +622,21 @@ public class LatinIME extends InputMethodService implements
                 // Must send the real KeyCode.DELETE, not a '\b' char via onMacroTypeChar —
                 // onCodeInput() doesn't treat code point 8 as a backspace, so Legit Mode's
                 // typo-then-correct step silently failed to erase the wrong character before.
-                onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE,
-                        Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
+                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+
+                // Show the delete key being pressed, same as a real tap
+                final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
+                if (kv != null) {
+                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                    if (kb2 != null) {
+                        final helium314.keyboard.keyboard.Key key = kb2.getKey(deleteCode);
+                        if (key != null) {
+                            kv.onKeyPressed(key, true);
+                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                        }
+                    }
+                }
             }
         });
 
@@ -705,8 +718,21 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroDeleteChar() {
-                onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE,
-                        Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
+                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+
+                // Show the delete key being pressed, same as a real tap
+                final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
+                if (kv != null) {
+                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                    if (kb2 != null) {
+                        final helium314.keyboard.keyboard.Key key = kb2.getKey(deleteCode);
+                        if (key != null) {
+                            kv.onKeyPressed(key, true);
+                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                        }
+                    }
+                }
             }
         });
     }

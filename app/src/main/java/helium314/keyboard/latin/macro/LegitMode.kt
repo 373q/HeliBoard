@@ -13,8 +13,23 @@ import kotlin.random.Random
  */
 object LegitMode {
 
-    // Probabilitate per caracter că se face o greșeală (~12%)
-    private const val TYPO_PROBABILITY = 0.12f
+    // Probabilitate per caracter că se face o greșeală
+    private const val TYPO_PROBABILITY = 0.06f
+
+    /**
+     * Limitează câte greșeli se fac într-un singur mesaj (max 1-2), altfel la mesaje
+     * lungi TYPO_PROBABILITY pe literă tot ar produce prea multe greșeli.
+     * O instanță nouă trebuie creată pentru fiecare mesaj tipărit.
+     */
+    class TypoBudget {
+        private val max = Random.nextInt(1, 3) // 1 sau 2 pe mesaj
+        private var used = 0
+        fun tryConsume(): Boolean {
+            if (used >= max) return false
+            used++
+            return true
+        }
+    }
 
     // Taste adiacente pentru fiecare literă (layout QWERTY)
     private val adjacentKeys: Map<Char, String> = mapOf(
@@ -54,28 +69,29 @@ object LegitMode {
     suspend fun typeCharWithPossibleTypo(
         correctChar: Char,
         charDelay: Long,
+        budget: TypoBudget,
         isRunning: () -> Boolean,
         typeChar: (Char) -> Unit,
         deleteChar: () -> Unit
     ) {
         if (!isRunning()) return
 
-        val shouldMakeTypo = correctChar.isLetter() && Random.nextFloat() < TYPO_PROBABILITY
+        val shouldMakeTypo = correctChar.isLetter() && Random.nextFloat() < TYPO_PROBABILITY && budget.tryConsume()
         val wrongChar = if (shouldMakeTypo) getWrongChar(correctChar) else null
 
         if (wrongChar != null) {
             // 1. Tipărește caracterul greșit
             withContext(Dispatchers.Main) { typeChar(wrongChar) }
-            // 2. Pauza scurtă — ca un om care tastează rapid și nu observă imediat
-            delay(Random.nextLong(120L, 360L))
+            // 2. Pauza scurtă — o corectare rapidă și "reală", nu una întinsă
+            delay(Random.nextLong(40L, 50L))
             if (!isRunning()) return
-            // 3. Șterge cu backspace
+            // 3. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real)
             withContext(Dispatchers.Main) { deleteChar() }
-            delay(Random.nextLong(80L, 200L))
+            delay(Random.nextLong(40L, 50L))
             if (!isRunning()) return
         }
 
-        // 4. Tipărește caracterul corect
+        // 4. Tipărește caracterul corect — apoi bucla apelantă revine la charDelay normal
         withContext(Dispatchers.Main) { typeChar(correctChar) }
     }
 }
