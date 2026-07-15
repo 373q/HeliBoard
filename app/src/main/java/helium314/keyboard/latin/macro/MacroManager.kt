@@ -42,6 +42,14 @@ object MacroManager {
     // Cache-ul mesajelor — incarcate o singura data la start, nu la fiecare iteratie din loop
     private var cachedMessages: List<String> = emptyList()
 
+    // Cache persistent al fisierului parsat, valabil intre porniri succesive ale macro-ului.
+    // Fara asta, fiecare start() re-citeste si re-parseaza fisierul de pe disc (poate fi 15MB+),
+    // ceea ce introduce o intarziere de 2-3s la pornire INDIFERENT de "Start delay" (care e 0
+    // doar in paralel cu incarcarea, nu o elimina). Cache-ul e invalidat doar cand fisierul e
+    // re-importat (vezi importFile), nu la fiecare stop().
+    private var messagesFileCache: List<String>? = null
+    private var messagesFileCacheMtime: Long = -1L
+
     var listener: MacroListener? = null
 
     interface MacroListener {
@@ -103,8 +111,10 @@ object MacroManager {
             // 0ms, nu vrem ca parse-ul unui fisier de 15MB+ sa adauge un delay "ascuns" la start.
             val startDelay = context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
             val startDelayDeferred = async { delay(startDelay) }
-            // Incarca mesajele pe thread IO — evita lag-ul pe fisiere mari (15MB+)
-            val messages = withContext(Dispatchers.IO) { loadMessages(context) }
+            // Foloseste cache-ul persistent daca exista si fisierul nu s-a schimbat — evita
+            // re-citirea + re-parse-ul de pe disc la fiecare start (asta e sursa reala a
+            // "start delay"-ului de 2-3s vazut chiar cu Start delay = 0ms).
+            val messages = withContext(Dispatchers.IO) { loadMessagesCached(context) }
             if (messages.isEmpty()) {
                 Log.w(TAG, "No messages to send")
                 isRunning = false
@@ -246,6 +256,28 @@ object MacroManager {
         }
     }
 
+    /**
+     * Ca loadMessages(), dar reutilizeaza rezultatul parsat anterior daca fisierul
+     * (marcat prin lastModified()) nu s-a schimbat de la ultima citire. Evita costul de
+     * I/O + parsing la fiecare pornire a macro-ului pentru fisiere mari (15MB+).
+     */
+    @Synchronized
+    fun loadMessagesCached(context: Context): List<String> {
+        val file = getMacroFile(context)
+        if (!file.exists()) {
+            messagesFileCache = null
+            messagesFileCacheMtime = -1L
+            return emptyList()
+        }
+        val mtime = file.lastModified()
+        val cached = messagesFileCache
+        if (cached != null && mtime == messagesFileCacheMtime) return cached
+        val loaded = loadMessages(context)
+        messagesFileCache = loaded
+        messagesFileCacheMtime = mtime
+        return loaded
+    }
+
     fun loadMessages(context: Context): List<String> {
         val file = getMacroFile(context)
         if (!file.exists()) return emptyList()
@@ -293,7 +325,7 @@ object MacroManager {
 
     fun getMacroFile(context: Context): File = File(context.filesDir, MACRO_FILE_NAME)
 
-    fun getMessageCount(context: Context): Int = loadMessages(context).size
+    fun getMessageCount(context: Context): Int = loadMessagesCached(context).size
 
     fun getMacroKeyword(context: Context): String =
         context.prefs().getString(Settings.PREF_MACRO_KEYWORD, "macro1") ?: "macro1"

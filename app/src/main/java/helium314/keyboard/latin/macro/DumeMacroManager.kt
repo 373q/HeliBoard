@@ -56,6 +56,12 @@ object DumeMacroManager {
     // Listener independent — setat de keyboard service la fel ca MacroManager.listener
     var listener: MacroManager.MacroListener? = null
 
+    // Cache persistent al fisierului parsat, valabil intre porniri succesive (vezi comentariul
+    // echivalent din MacroManager — fara el, fiecare start() re-parseaza fisierul de pe disc,
+    // ceea ce cauzeaza intarzierea de 2-3s la pornire indiferent de "Start delay").
+    private var groupsFileCache: List<List<String>>? = null
+    private var groupsFileCacheMtime: Long = -1L
+
     fun isRunning() = isRunning
 
     fun toggle(context: Context) {
@@ -72,7 +78,7 @@ object DumeMacroManager {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
             val startDelayDeferred = async { delay(startDelay) }
 
-            val groups = withContext(Dispatchers.IO) { loadGroups(context) }
+            val groups = withContext(Dispatchers.IO) { loadGroupsCached(context) }
             if (groups.isEmpty()) {
                 Log.w(TAG, "No dume message groups to send")
                 isRunning = false
@@ -184,6 +190,27 @@ object DumeMacroManager {
      * Fiecare linie non-goală = un mesaj trimis verbatim.
      * Grupele sunt separate de linii goale.
      */
+    /**
+     * Ca loadGroups(), dar reutilizeaza rezultatul parsat anterior daca fisierul nu s-a
+     * schimbat (lastModified()) de la ultima citire — evita I/O + parsing la fiecare start().
+     */
+    @Synchronized
+    fun loadGroupsCached(context: Context): List<List<String>> {
+        val file = getDumeFile(context)
+        if (!file.exists()) {
+            groupsFileCache = null
+            groupsFileCacheMtime = -1L
+            return emptyList()
+        }
+        val mtime = file.lastModified()
+        val cached = groupsFileCache
+        if (cached != null && mtime == groupsFileCacheMtime) return cached
+        val loaded = loadGroups(context)
+        groupsFileCache = loaded
+        groupsFileCacheMtime = mtime
+        return loaded
+    }
+
     fun loadGroups(context: Context): List<List<String>> {
         val file = getDumeFile(context)
         if (!file.exists()) return emptyList()
@@ -226,7 +253,7 @@ object DumeMacroManager {
 
     fun getDumeFile(context: Context): File = File(context.filesDir, DUME_FILE_NAME)
 
-    fun getGroupCount(context: Context): Int = loadGroups(context).size
+    fun getGroupCount(context: Context): Int = loadGroupsCached(context).size
 
-    fun getMessageCount(context: Context): Int = loadGroups(context).sumOf { it.size }
+    fun getMessageCount(context: Context): Int = loadGroupsCached(context).sumOf { it.size }
 }
