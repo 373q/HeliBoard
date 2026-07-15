@@ -56,6 +56,10 @@ object DumeMacroManager {
     // Listener independent — setat de keyboard service la fel ca MacroManager.listener
     var listener: MacroManager.MacroListener? = null
 
+    // Prefix — text deja scris in campul de input inainte de pornirea macro-ului, la fel ca
+    // la Shift mode. Se lipeste (paste) inaintea fiecarui mesaj in afara de primul.
+    private var inputPrefix: String? = null
+
     // Cache persistent al fisierului parsat, valabil intre porniri succesive (vezi comentariul
     // echivalent din MacroManager — fara el, fiecare start() re-parseaza fisierul de pe disc,
     // ceea ce cauzeaza intarzierea de 2-3s la pornire indiferent de "Start delay").
@@ -73,6 +77,18 @@ object DumeMacroManager {
         isRunning = true
 
         val startedShifted = listener?.isShifted() ?: false
+
+        // Captureaza textul deja scris in input (trebuie pe Main thread, inainte de coroutine) —
+        // devine prefixul lipit inaintea fiecarui mesaj urmator, la fel ca la Shift mode.
+        val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
+        inputPrefix = rawInput
+
+        inputPrefix?.let { prefix ->
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dume_macro_prefix", prefix))
+        }
+
+        listener?.onMacroStart(inputPrefix != null)
 
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
@@ -94,6 +110,7 @@ object DumeMacroManager {
         isRunning = false
         typingJob?.cancel()
         typingJob = null
+        inputPrefix = null
     }
 
     private suspend fun runDumeMacro(
@@ -110,6 +127,7 @@ object DumeMacroManager {
         groups.shuffle()
         var groupIndex = 0
         var lineIndexInGroup = 0
+        var totalSent = 0
 
         while (isRunning) {
             if (!isRunning) return
@@ -144,6 +162,16 @@ object DumeMacroManager {
             lineIndexInGroup++
 
             if (capsOn) line = line.uppercase()
+
+            val isFirstMsg = totalSent == 0
+            totalSent++
+            val prefix = inputPrefix
+            if (!isFirstMsg && !prefix.isNullOrEmpty()) {
+                val p = if (capsOn) prefix.uppercase() else prefix
+                withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
+                delay(150)
+                if (!isRunning) return
+            }
 
             // Tipărește linia caracter cu caracter
             for ((charIndex, char) in line.withIndex()) {

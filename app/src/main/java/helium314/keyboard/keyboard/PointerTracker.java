@@ -476,7 +476,8 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
         }
 
         final boolean noKeyPreview = sInGesture || needsToSuppressKeyPreviewPopup(eventTime)
-                || key.getCode() == Constants.CODE_SPACE;
+                || key.getCode() == Constants.CODE_SPACE
+                || key.getCode() == Constants.CODE_COMMA;
         sDrawingProxy.onKeyPressed(key, !noKeyPreview);
 
         if (key.isShift()) {

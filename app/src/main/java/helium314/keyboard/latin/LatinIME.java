@@ -617,6 +617,14 @@ public class LatinIME extends InputMethodService implements
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
                 return text != null ? text.toString() : null;
             }
+            @Override
+            public void onMacroDeleteChar() {
+                // Must send the real KeyCode.DELETE, not a '\b' char via onMacroTypeChar —
+                // onCodeInput() doesn't treat code point 8 as a backspace, so Legit Mode's
+                // typo-then-correct step silently failed to erase the wrong character before.
+                onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE,
+                        Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+            }
         });
 
         // Register Dume macro listener — same implementation as Shift macro
@@ -677,6 +685,11 @@ public class LatinIME extends InputMethodService implements
                 final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
                 return text != null ? text.toString() : null;
+            }
+            @Override
+            public void onMacroDeleteChar() {
+                onCodeInput(helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE,
+                        Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
             }
         });
     }
