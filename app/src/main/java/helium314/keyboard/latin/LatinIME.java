@@ -655,7 +655,11 @@ public class LatinIME extends InputMethodService implements
                 onTextInput(text);
             }
             @Override
-            public void onMacroStart(boolean hasPrefix) { }
+            public void onMacroStart(boolean hasPrefix) {
+                if (hasPrefix && mSuggestionStripView != null) {
+                    mSuggestionStripView.setToolbarVisibility(true);
+                }
+            }
             @Override
             public void onMacroCapsState(boolean capsOn) {
                 if (capsOn) {
