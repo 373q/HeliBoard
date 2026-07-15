@@ -633,6 +633,19 @@ public class LatinIME extends InputMethodService implements
             public void onMacroTypeChar(char c) {
                 final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+
+                // Show key preview / press animation, same as Shift macro
+                final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
+                if (kv != null) {
+                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                    if (kb2 != null) {
+                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
+                        if (key != null) {
+                            kv.onKeyPressed(key, true);
+                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                        }
+                    }
+                }
             }
             @Override
             public void onMacroSendMessage() {
