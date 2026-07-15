@@ -142,6 +142,10 @@ object MacroManager {
         val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
         val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
         val legitMode = prefs.getBoolean(Settings.PREF_SHIFT_LEGIT_MODE, false)
+        val legitDeleteDelay = prefs.getInt(Settings.PREF_LEGIT_DELETE_DELAY, 120).toLong()
+        val legitPauseActions = prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
+        val legitWriteDelay = prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
+        val legitTypos = prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
@@ -201,7 +205,7 @@ object MacroManager {
 
             // Tipărește mesajul caracter cu caracter (cu Legit Mode dacă e activat)
             // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
-            val typoBudget = LegitMode.TypoBudget()
+            val typoBudget = LegitMode.TypoBudget(legitTypos)
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -213,6 +217,9 @@ object MacroManager {
                         correctChar = charToType,
                         charDelay = charDelay,
                         budget = typoBudget,
+                        pauseDelay = legitPauseActions,
+                        deleteDelay = legitDeleteDelay,
+                        writeDelay = legitWriteDelay,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }

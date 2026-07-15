@@ -21,8 +21,8 @@ object LegitMode {
      * lungi TYPO_PROBABILITY pe literă tot ar produce prea multe greșeli.
      * O instanță nouă trebuie creată pentru fiecare mesaj tipărit.
      */
-    class TypoBudget {
-        private val max = Random.nextInt(1, 3) // 1 sau 2 pe mesaj
+    class TypoBudget(maxTypos: Int = 2) {
+        private val max = Random.nextInt(1, maxTypos + 1)
         private var used = 0
         fun tryConsume(): Boolean {
             if (used >= max) return false
@@ -70,6 +70,9 @@ object LegitMode {
         correctChar: Char,
         charDelay: Long,
         budget: TypoBudget,
+        pauseDelay: Long,
+        deleteDelay: Long,
+        writeDelay: Long,
         isRunning: () -> Boolean,
         typeChar: (Char) -> Unit,
         deleteChar: () -> Unit
@@ -82,15 +85,15 @@ object LegitMode {
         if (wrongChar != null) {
             // 1. Tipărește caracterul greșit
             withContext(Dispatchers.Main) { typeChar(wrongChar) }
-            delay(40L)
+            delay(pauseDelay)
             if (!isRunning()) return
-            // 2. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real) — 120ms
+            // 2. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real)
             withContext(Dispatchers.Main) { deleteChar() }
-            delay(120L)
+            delay(deleteDelay)
             if (!isRunning()) return
-            // 3. Tipărește caracterul corect — 100ms, apoi bucla apelantă revine la charDelay normal
+            // 3. Tipărește caracterul corect, apoi bucla apelantă revine la charDelay normal
             withContext(Dispatchers.Main) { typeChar(correctChar) }
-            delay(100L)
+            delay(writeDelay)
             return
         }
 

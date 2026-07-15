@@ -197,10 +197,18 @@ object Defaults {
     const val PREF_MACRO_MSG_DELAY = 3000
     const val PREF_MACRO_START_DELAY = 800
     const val PREF_SHIFT_LEGIT_MODE = false
+    const val PREF_LEGIT_DELETE_DELAY = 120
+    const val PREF_LEGIT_PAUSE_ACTIONS = 40
+    const val PREF_LEGIT_WRITE_DELAY = 100
+    const val PREF_LEGIT_TYPOS = 2
     // Macro defaults (Dume)
     const val PREF_DUME_CHAR_DELAY = 80
     const val PREF_DUME_MSG_DELAY = 3000
     const val PREF_DUME_START_DELAY = 800
     const val PREF_DUME_LEGIT_MODE = false
+    const val PREF_DUME_LEGIT_DELETE_DELAY = 120
+    const val PREF_DUME_LEGIT_PAUSE_ACTIONS = 40
+    const val PREF_DUME_LEGIT_WRITE_DELAY = 100
+    const val PREF_DUME_LEGIT_TYPOS = 2
 }
 

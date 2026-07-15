@@ -125,6 +125,38 @@ private fun ShiftMacroTab() {
                 default = Defaults.PREF_SHIFT_LEGIT_MODE,
                 description = "Simulează greșeli umane de tastare: scrie o literă greșită, o șterge și corectează",
             )
+            SliderPreference(
+                name = "Legit Mode — pause before delete (ms)",
+                key = Settings.PREF_LEGIT_PAUSE_ACTIONS,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_LEGIT_PAUSE_ACTIONS,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — delete key delay (ms)",
+                key = Settings.PREF_LEGIT_DELETE_DELAY,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_LEGIT_DELETE_DELAY,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — retype correct char delay (ms)",
+                key = Settings.PREF_LEGIT_WRITE_DELAY,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_LEGIT_WRITE_DELAY,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — max typos per message",
+                key = Settings.PREF_LEGIT_TYPOS,
+                description = { v: Int -> "$v typos" },
+                default = Defaults.PREF_LEGIT_TYPOS,
+                range = 1f..10f,
+                stepSize = 1,
+            )
             Preference(
                 name = if (isRunning) "Stop Macro (Shift)" else "Start Macro (Shift)",
                 description = if (isRunning) "Running" else "Stopped",
@@ -208,6 +240,38 @@ private fun DumeMacroTab() {
                 key = Settings.PREF_DUME_LEGIT_MODE,
                 default = Defaults.PREF_DUME_LEGIT_MODE,
                 description = "Simulează greșeli umane de tastare: scrie o literă greșită, o șterge și corectează",
+            )
+            SliderPreference(
+                name = "Legit Mode — pause before delete (ms)",
+                key = Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_DUME_LEGIT_PAUSE_ACTIONS,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — delete key delay (ms)",
+                key = Settings.PREF_DUME_LEGIT_DELETE_DELAY,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_DUME_LEGIT_DELETE_DELAY,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — retype correct char delay (ms)",
+                key = Settings.PREF_DUME_LEGIT_WRITE_DELAY,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_DUME_LEGIT_WRITE_DELAY,
+                range = 20f..3000f,
+                stepSize = 10,
+            )
+            SliderPreference(
+                name = "Legit Mode — max typos per message",
+                key = Settings.PREF_DUME_LEGIT_TYPOS,
+                description = { v: Int -> "$v typos" },
+                default = Defaults.PREF_DUME_LEGIT_TYPOS,
+                range = 1f..10f,
+                stepSize = 1,
             )
             Preference(
                 name = if (isRunning) "Stop Macro (Dume)" else "Start Macro (Dume)",

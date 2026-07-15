@@ -214,7 +214,15 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_MACRO_KEYWORD = "macro_keyword";
     // Legit mode (typo simulation)
     public static final String PREF_SHIFT_LEGIT_MODE = "shift_legit_mode";
+    public static final String PREF_LEGIT_DELETE_DELAY = "legit_delete_delay";
+    public static final String PREF_LEGIT_PAUSE_ACTIONS = "legit_pause_actions";
+    public static final String PREF_LEGIT_WRITE_DELAY = "legit_write_delay";
+    public static final String PREF_LEGIT_TYPOS = "legit_typos";
     public static final String PREF_DUME_LEGIT_MODE = "dume_legit_mode";
+    public static final String PREF_DUME_LEGIT_DELETE_DELAY = "dume_legit_delete_delay";
+    public static final String PREF_DUME_LEGIT_PAUSE_ACTIONS = "dume_legit_pause_actions";
+    public static final String PREF_DUME_LEGIT_WRITE_DELAY = "dume_legit_write_delay";
+    public static final String PREF_DUME_LEGIT_TYPOS = "dume_legit_typos";
     // Dume macro
     public static final String PREF_DUME_CHAR_DELAY = "dume_char_delay";
     public static final String PREF_DUME_MSG_DELAY = "dume_msg_delay";

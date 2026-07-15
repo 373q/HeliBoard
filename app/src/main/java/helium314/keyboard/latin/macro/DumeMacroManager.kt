@@ -122,6 +122,10 @@ object DumeMacroManager {
         val charDelay = prefs.getInt(Settings.PREF_DUME_CHAR_DELAY, 80).toLong()
         val msgDelay = prefs.getInt(Settings.PREF_DUME_MSG_DELAY, 3000).toLong()
         val legitMode = prefs.getBoolean(Settings.PREF_DUME_LEGIT_MODE, false)
+        val legitDeleteDelay = prefs.getInt(Settings.PREF_DUME_LEGIT_DELETE_DELAY, 120).toLong()
+        val legitPauseActions = prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
+        val legitWriteDelay = prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
+        val legitTypos = prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
 
         // Shuffle grupurile
         groups.shuffle()
@@ -175,7 +179,7 @@ object DumeMacroManager {
 
             // Tipărește linia caracter cu caracter
             // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
-            val typoBudget = LegitMode.TypoBudget()
+            val typoBudget = LegitMode.TypoBudget(legitTypos)
             for ((charIndex, char) in line.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -187,6 +191,9 @@ object DumeMacroManager {
                         correctChar = charToType,
                         charDelay = charDelay,
                         budget = typoBudget,
+                        pauseDelay = legitPauseActions,
+                        deleteDelay = legitDeleteDelay,
+                        writeDelay = legitWriteDelay,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }
