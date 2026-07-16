@@ -182,7 +182,7 @@ object MacroManager {
                 if (needsPrefix) {
                     val p = if (capsOn) prefix!!.uppercase() else prefix!!
                     withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
-                    delay(150)
+                    delay(250) // mai mult timp pentru paste să se așeze în câmp înainte să înceapă tastarea
                     if (!isRunning) return
                 }
                 if (isBoldMode) {
@@ -262,6 +262,23 @@ object MacroManager {
                 listener?.onMacroSendMessage()
             }
 
+            // Așteptăm ca aplicația să proceseze trimiterea și să golească câmpul de input.
+            // Fără asta, pe Discord/Instagram (care au latență de send de 200-400ms), prefixul
+            // mesajului următor ajunge să fie lipit în câmpul anterior înainte ca acesta să fie
+            // golit, rezultând text sudat + primele litere tăiate la mesajul următor.
+            delay(150) // timp minim pentru ca Enter-ul să fie dispatched la app
+            val maxWaitAfterSend = 3000L
+            val pollInterval = 40L
+            var waitedAfterSend = 0L
+            while (isRunning && waitedAfterSend < maxWaitAfterSend) {
+                delay(pollInterval)
+                waitedAfterSend += pollInterval
+                val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
+                if (txt == null) { isRunning = false; return } // am pierdut focusul
+                if (txt.isEmpty()) break // câmpul e golit, safe să continuăm
+            }
+
+            if (!isRunning) return
             delay(msgDelay)
         }
     }
