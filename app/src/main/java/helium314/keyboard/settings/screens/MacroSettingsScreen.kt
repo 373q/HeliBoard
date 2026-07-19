@@ -236,6 +236,28 @@ private fun DumeMacroTab() {
                 stepSize = 100,
             )
             SwitchPreference(
+                name = "Random Pause",
+                key = Settings.PREF_DUME_RANDOM_PAUSE_ENABLED,
+                default = Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED,
+                description = "Inserează pauze aleatorii în secvența de mesaje",
+            )
+            SliderPreference(
+                name = "Random Pause — max duration (ms)",
+                key = Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS,
+                range = 0f..3000f,
+                stepSize = 100,
+            )
+            SliderPreference(
+                name = "Random Pause — number of pauses (per 10 msg)",
+                key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
+                description = { v: Int -> "$v pauses" },
+                default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
+                range = 0f..10f,
+                stepSize = 1,
+            )
+            SwitchPreference(
                 name = "Legit Mode",
                 key = Settings.PREF_DUME_LEGIT_MODE,
                 default = Defaults.PREF_DUME_LEGIT_MODE,

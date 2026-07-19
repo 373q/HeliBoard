@@ -227,6 +227,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_DUME_CHAR_DELAY = "dume_char_delay";
     public static final String PREF_DUME_MSG_DELAY = "dume_msg_delay";
     public static final String PREF_DUME_START_DELAY = "dume_start_delay";
+    public static final String PREF_DUME_RANDOM_PAUSE_ENABLED = "dume_random_pause_enabled";
+    public static final String PREF_DUME_RANDOM_PAUSE_MAX_MS = "dume_random_pause_max_ms";
+    public static final String PREF_DUME_RANDOM_PAUSE_COUNT = "dume_random_pause_count";
 
     private Context mContext;
     private SharedPreferences mPrefs;

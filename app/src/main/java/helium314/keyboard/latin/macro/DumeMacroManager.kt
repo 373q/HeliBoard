@@ -3,8 +3,10 @@ package helium314.keyboard.latin.macro
 
 import android.content.Context
 import android.net.Uri
+import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.random.Random
 
 /**
  * DumeMacroManager — modul macro "Dume".
@@ -56,9 +59,16 @@ object DumeMacroManager {
     // Listener independent — setat de keyboard service la fel ca MacroManager.listener
     var listener: MacroManager.MacroListener? = null
 
-    // Prefix — text deja scris in campul de input inainte de pornirea macro-ului, la fel ca
-    // la Shift mode. Se lipeste (paste) inaintea fiecarui mesaj in afara de primul.
+    // Prefix — text deja scris in campul de input inainte de pornirea macro-ului.
+    // Se lipeste (paste) inaintea fiecarui mesaj in afara de primul,
+    // DAR NUMAI daca toolbar-ul era EXPANDABLE (on) la momentul pornirii.
+    // Daca toolbar-ul era off, prefixul se aplica doar la primul mesaj.
     private var inputPrefix: String? = null
+
+    // Starea toolbar-ului la momentul pornirii macro-ului.
+    // true  = toolbar era EXPANDABLE (on) → prefix pe fiecare mesaj după primul + auto-expand toolbar
+    // false = toolbar era off → prefix doar pe primul mesaj
+    private var toolbarWasOn: Boolean = false
 
     // Cache persistent al fisierului parsat, valabil intre porniri succesive (vezi comentariul
     // echivalent din MacroManager — fara el, fiecare start() re-parseaza fisierul de pe disc,
@@ -83,12 +93,17 @@ object DumeMacroManager {
         val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
         inputPrefix = rawInput
 
+        // Verifică starea toolbar-ului ACUM, înainte de coroutine
+        toolbarWasOn = Settings.readToolbarMode(context.prefs()) == ToolbarMode.EXPANDABLE
+
         inputPrefix?.let { prefix ->
             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dume_macro_prefix", prefix))
         }
 
-        listener?.onMacroStart(inputPrefix != null)
+        // onMacroStart(hasPrefix=true) → LatinIME va apela setToolbarVisibility(true)
+        // doar dacă toolbar-ul era EXPANDABLE (logica e în listener din LatinIME.java)
+        listener?.onMacroStart(inputPrefix != null && toolbarWasOn)
 
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
@@ -102,7 +117,7 @@ object DumeMacroManager {
                 return@launch
             }
             startDelayDeferred.await()
-            runDumeMacro(context, groups.toMutableList(), startedShifted)
+            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn)
         }
     }
 
@@ -111,12 +126,14 @@ object DumeMacroManager {
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null
+        toolbarWasOn = false
     }
 
     private suspend fun runDumeMacro(
         context: Context,
         groups: MutableList<List<String>>,
-        capsOn: Boolean
+        capsOn: Boolean,
+        toolbarWasOn: Boolean
     ) {
         val prefs = context.prefs()
         val charDelay = prefs.getInt(Settings.PREF_DUME_CHAR_DELAY, 80).toLong()
@@ -126,6 +143,9 @@ object DumeMacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
+        val randomPauseEnabled = prefs.getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)
+        val randomPauseMaxMs = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS, Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS).toLong()
+        val randomPauseCount = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_COUNT, Defaults.PREF_DUME_RANDOM_PAUSE_COUNT)
 
         // Shuffle grupurile
         groups.shuffle()
@@ -170,7 +190,11 @@ object DumeMacroManager {
             val isFirstMsg = totalSent == 0
             totalSent++
             val prefix = inputPrefix
-            if (!isFirstMsg && !prefix.isNullOrEmpty()) {
+            // Logică prefix:
+            // - toolbar ON  → prefix pe fiecare mesaj după primul (comportament normal)
+            // - toolbar OFF → prefix DOAR pe primul mesaj; restul fără prefix
+            val shouldPastePrefix = !isFirstMsg && !prefix.isNullOrEmpty() && toolbarWasOn
+            if (shouldPastePrefix) {
                 val p = if (capsOn) prefix.uppercase() else prefix
                 withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
                 delay(250) // mai mult timp pentru paste să se așeze în câmp înainte să înceapă tastarea
@@ -237,6 +261,18 @@ object DumeMacroManager {
 
             if (!isRunning) return
             delay(msgDelay)
+
+            // Random pause — inserat după delay-ul normal dintre mesaje
+            if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
+                // Fiecare mesaj are o probabilitate de a primi o pauză.
+                // randomPauseCount / 10 = probabilitatea aproximativă pe mesaj (max 10 pauze la 10 mesaje = 100%)
+                val pauseChance = randomPauseCount.toFloat() / 10f
+                if (Random.nextFloat() < pauseChance) {
+                    val pauseMs = Random.nextLong(0L, randomPauseMaxMs + 1L)
+                    if (!isRunning) return
+                    delay(pauseMs)
+                }
+            }
         }
     }
 
