@@ -105,9 +105,7 @@ object DumeMacroManager {
             }
         }
 
-        // onMacroStart(hasPrefix=true) → LatinIME va apela setToolbarVisibility(true)
-        // doar dacă toolbar-ul era EXPANDABLE (logica e în listener din LatinIME.java)
-        listener?.onMacroStart(inputPrefix != null && toolbarWasOn)
+        listener?.onMacroStart(false)
 
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()

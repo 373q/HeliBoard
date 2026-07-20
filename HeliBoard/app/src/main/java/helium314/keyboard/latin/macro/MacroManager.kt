@@ -105,7 +105,7 @@ object MacroManager {
             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
         }
 
-        listener?.onMacroStart(inputPrefix != null || isBoldMode)
+        listener?.onMacroStart(isBoldMode)
         listener?.onMacroCapsState(startedShifted)
 
         typingJob = scope.launch {
