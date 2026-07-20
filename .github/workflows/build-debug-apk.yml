@@ -13,8 +13,9 @@ jobs:
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@v3
       - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x HeliBoard/gradlew
       - name: Build with Gradle
+        working-directory: HeliBoard
         run: |
           set +e
           ./gradlew assembleDebug > /tmp/build.log 2>&1
@@ -28,10 +29,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HeliBoard
-          path: app/build/outputs/apk/debug/HeliBoard.apk
+          path: HeliBoard/app/build/outputs/apk/debug/HeliBoard.apk
       - name: Archive reports for failed job
         uses: actions/upload-artifact@v4
         with:
           name: reports
-          path: '*/build/reports'
+          path: 'HeliBoard/*/build/reports'
         if: ${{ failure() }}
