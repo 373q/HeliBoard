@@ -211,6 +211,9 @@ object MacroManager {
             // Tipărește mesajul caracter cu caracter (cu Legit Mode dacă e activat)
             // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
             val typoBudget = LegitMode.TypoBudget(legitTypos)
+            val pausePositions: Set<Int> = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && msg.isNotEmpty()) {
+                (0 until msg.length).shuffled().take(randomPauseCount).toHashSet()
+            } else emptySet()
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -240,6 +243,10 @@ object MacroManager {
                     else -> charDelay
                 }
                 delay(d)
+                if (charIndex in pausePositions) {
+                    if (!isRunning) return
+                    delay(Random.nextLong(0L, randomPauseMaxMs + 1L))
+                }
             }
 
             // Inchide ** la sfarsit (bold mode)
@@ -285,15 +292,6 @@ object MacroManager {
 
             if (!isRunning) return
             delay(msgDelay)
-
-            // Random pause — inserat după delay-ul normal dintre mesaje
-            // randomPauseCount = numărul exact de pauze per mesaj; fiecare pauză are durată random 0..maxMs
-            if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
-                repeat(randomPauseCount) {
-                    if (!isRunning) return
-                    delay(Random.nextLong(0L, randomPauseMaxMs + 1L))
-                }
-            }
         }
     }
 
