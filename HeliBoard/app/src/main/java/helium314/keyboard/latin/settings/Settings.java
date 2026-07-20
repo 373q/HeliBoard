@@ -213,6 +213,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_MACRO_START_DELAY = "macro_start_delay";
     public static final String PREF_MACRO_KEYWORD = "macro_keyword";
     // Legit mode (typo simulation)
+    public static final String PREF_MACRO_RANDOM_PAUSE_ENABLED = "macro_random_pause_enabled";
+    public static final String PREF_MACRO_RANDOM_PAUSE_MAX_MS = "macro_random_pause_max_ms";
+    public static final String PREF_MACRO_RANDOM_PAUSE_COUNT = "macro_random_pause_count";
     public static final String PREF_SHIFT_LEGIT_MODE = "shift_legit_mode";
     public static final String PREF_LEGIT_DELETE_DELAY = "legit_delete_delay";
     public static final String PREF_LEGIT_PAUSE_ACTIONS = "legit_pause_actions";

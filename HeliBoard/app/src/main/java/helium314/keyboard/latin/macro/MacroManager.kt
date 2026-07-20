@@ -3,9 +3,11 @@ package helium314.keyboard.latin.macro
 
 import android.content.Context
 import android.net.Uri
+import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.prefs
+import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -146,6 +148,9 @@ object MacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
+        val randomPauseEnabled = prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)
+        val randomPauseMaxMs = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS).toLong()
+        val randomPauseCount = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
@@ -280,6 +285,16 @@ object MacroManager {
 
             if (!isRunning) return
             delay(msgDelay)
+
+            // Random pause — inserat după delay-ul normal dintre mesaje
+            if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
+                val pauseChance = randomPauseCount.toFloat() / 10f
+                if (Random.nextFloat() < pauseChance) {
+                    val pauseMs = Random.nextLong(0L, randomPauseMaxMs + 1L)
+                    if (!isRunning) return
+                    delay(pauseMs)
+                }
+            }
         }
     }
 

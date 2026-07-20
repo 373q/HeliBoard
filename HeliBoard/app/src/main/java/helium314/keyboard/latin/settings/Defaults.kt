@@ -196,6 +196,9 @@ object Defaults {
     const val PREF_MACRO_CHAR_DELAY = 80
     const val PREF_MACRO_MSG_DELAY = 3000
     const val PREF_MACRO_START_DELAY = 800
+    const val PREF_MACRO_RANDOM_PAUSE_ENABLED = false
+    const val PREF_MACRO_RANDOM_PAUSE_MAX_MS = 1500
+    const val PREF_MACRO_RANDOM_PAUSE_COUNT = 3
     const val PREF_SHIFT_LEGIT_MODE = false
     const val PREF_LEGIT_DELETE_DELAY = 120
     const val PREF_LEGIT_PAUSE_ACTIONS = 40
