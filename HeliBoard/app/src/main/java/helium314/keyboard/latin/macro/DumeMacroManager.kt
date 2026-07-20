@@ -161,13 +161,35 @@ object DumeMacroManager {
             if (!isRunning) return
 
             // Auto-stop dacă tastatura a pierdut focusul (getCurrentInputText() == null)
+            // La primul mesaj (totalSent == 0) așteptăm până la 3s ca IME-ul să se reconecteze
+            // (toolbar-ul tocmai s-a deschis și poate întrerupe temporar conexiunea IME).
+            // Mid-macro (totalSent > 0), stop imediat — pierderea focusului e reală.
             val inputAvailable = withContext(Dispatchers.Main) {
                 listener?.getCurrentInputText() != null
             }
             if (!inputAvailable) {
-                Log.w(TAG, "Dume: input unavailable, stopping macro")
-                isRunning = false
-                return
+                if (totalSent == 0) {
+                    // Retry loop — max 3s, poll la 100ms
+                    val deadline = System.currentTimeMillis() + 3000L
+                    var found = false
+                    while (System.currentTimeMillis() < deadline) {
+                        delay(100L)
+                        if (!isRunning) return
+                        found = withContext(Dispatchers.Main) {
+                            listener?.getCurrentInputText() != null
+                        }
+                        if (found) break
+                    }
+                    if (!found) {
+                        Log.w(TAG, "Dume: input unavailable after 3s wait, stopping macro")
+                        isRunning = false
+                        return
+                    }
+                } else {
+                    Log.w(TAG, "Dume: input unavailable mid-macro, stopping")
+                    isRunning = false
+                    return
+                }
             }
 
             // Dacă am terminat toate grupurile, re-shuffle și reîncepem
