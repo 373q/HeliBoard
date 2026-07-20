@@ -1,0 +1,37 @@
+name: Build debug APK
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Build with Gradle
+        run: |
+          set +e
+          ./gradlew assembleDebug > /tmp/build.log 2>&1
+          EXIT_CODE=$?
+          echo "======= ERORI ======="
+          grep -E "error:|Error:|FAILED|Exception|^e:" /tmp/build.log | head -50
+          echo "======= ULTIMELE 30 LINII ======="
+          tail -30 /tmp/build.log
+          exit $EXIT_CODE
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HeliBoard
+          path: app/build/outputs/apk/debug/HeliBoard.apk
+      - name: Archive reports for failed job
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: '*/build/reports'
+        if: ${{ failure() }}
