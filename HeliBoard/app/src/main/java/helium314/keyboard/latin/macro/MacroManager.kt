@@ -287,12 +287,11 @@ object MacroManager {
             delay(msgDelay)
 
             // Random pause — inserat după delay-ul normal dintre mesaje
+            // randomPauseCount = numărul exact de pauze per mesaj; fiecare pauză are durată random 0..maxMs
             if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
-                val pauseChance = randomPauseCount.toFloat() / 10f
-                if (Random.nextFloat() < pauseChance) {
-                    val pauseMs = Random.nextLong(0L, randomPauseMaxMs + 1L)
+                repeat(randomPauseCount) {
                     if (!isRunning) return
-                    delay(pauseMs)
+                    delay(Random.nextLong(0L, randomPauseMaxMs + 1L))
                 }
             }
         }

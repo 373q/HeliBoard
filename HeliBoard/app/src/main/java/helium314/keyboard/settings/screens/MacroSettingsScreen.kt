@@ -134,9 +134,9 @@ private fun ShiftMacroTab() {
                 stepSize = 100,
             )
             SliderPreference(
-                name = "Random Pause — number of pauses (per 10 msg)",
+                name = "Random Pause — pauses per message",
                 key = Settings.PREF_MACRO_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> "$v pauses" },
+                description = { v: Int -> "$v pauses/msg" },
                 default = Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT,
                 range = 0f..10f,
                 stepSize = 1,
@@ -272,9 +272,9 @@ private fun DumeMacroTab() {
                 stepSize = 100,
             )
             SliderPreference(
-                name = "Random Pause — number of pauses (per 10 msg)",
+                name = "Random Pause — pauses per message",
                 key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> "$v pauses" },
+                description = { v: Int -> "$v pauses/msg" },
                 default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
                 range = 0f..10f,
                 stepSize = 1,
