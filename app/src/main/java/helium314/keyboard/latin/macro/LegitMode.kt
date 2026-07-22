@@ -22,10 +22,12 @@ object LegitMode {
      * O instanță nouă trebuie creată pentru fiecare mesaj tipărit.
      */
     class TypoBudget(maxTypos: Int = 2) {
-        private val max = Random.nextInt(1, maxTypos + 1)
+        // maxTypos=0 inseamna dezactivat complet (niciun typo).
+        // Altfel, se alege random cate greseli se fac in mesajul curent (intre 1 si maxTypos).
+        private val max = if (maxTypos <= 0) 0 else Random.nextInt(1, maxTypos + 1)
         private var used = 0
         fun tryConsume(): Boolean {
-            if (used >= max) return false
+            if (max == 0 || used >= max) return false
             used++
             return true
         }
