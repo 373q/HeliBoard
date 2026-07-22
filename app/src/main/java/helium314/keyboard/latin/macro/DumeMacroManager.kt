@@ -6,7 +6,6 @@ import android.net.Uri
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
-import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,8 +92,9 @@ object DumeMacroManager {
         val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
         inputPrefix = rawInput
 
-        // Verifică starea toolbar-ului ACUM, înainte de coroutine
-        toolbarWasOn = Settings.readToolbarMode(context.prefs()) == ToolbarMode.EXPANDABLE
+        // Verifică dacă toolbar-ul e efectiv vizibil/deschis ACUM (nu doar modul din settings).
+        // isToolbarExpanded() citește toolbarContainer.isVisible din SuggestionStripView.
+        toolbarWasOn = listener?.isToolbarExpanded() ?: false
 
         // Copiaza prefixul in clipboard DOAR daca toolbar-ul era on (EXPANDABLE).
         // Cand toolbar e off, nu avem nevoie de clipboard — prefixul nu se mai lipeste pe mesajele urmatoare.

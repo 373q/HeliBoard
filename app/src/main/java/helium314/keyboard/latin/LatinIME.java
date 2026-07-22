@@ -638,6 +638,10 @@ public class LatinIME extends InputMethodService implements
                     }
                 }
             }
+            @Override
+            public boolean isToolbarExpanded() {
+                return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
+            }
         });
 
         // Register Dume macro listener — same implementation as Shift macro
@@ -733,6 +737,10 @@ public class LatinIME extends InputMethodService implements
                         }
                     }
                 }
+            }
+            @Override
+            public boolean isToolbarExpanded() {
+                return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
             }
         });
     }

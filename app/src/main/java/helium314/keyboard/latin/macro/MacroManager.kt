@@ -38,6 +38,7 @@ object MacroManager {
 
     private var inputPrefix: String? = null
     private var isBoldMode = false
+    private var toolbarWasOn: Boolean = false
 
     // Cache-ul mesajelor — incarcate o singura data la start, nu la fiecare iteratie din loop
     private var cachedMessages: List<String> = emptyList()
@@ -63,6 +64,8 @@ object MacroManager {
         fun isCapsLocked(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
+        /** Returns true dacă toolbar-ul e efectiv vizibil/deschis chiar acum */
+        fun isToolbarExpanded(): Boolean
         /**
          * Apasă backspace o singură dată — folosit de Legit Mode pentru a șterge
          * caracterul greșit înainte de corectare. Implementarea implicită trimite
@@ -97,13 +100,19 @@ object MacroManager {
             rawInput
         }
 
-        // Copiaza prefixul in clipboard ca sa poata fi lipit rapid la mesajele urmatoare
-        inputPrefix?.let { prefix ->
-            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
+        // Verifica daca toolbar-ul e efectiv deschis/vizibil acum (nu doar modul din settings)
+        toolbarWasOn = listener?.isToolbarExpanded() ?: false
+
+        // Copiaza prefixul in clipboard DOAR daca toolbar-ul era deschis.
+        // Cand e inchis, prefixul nu se mai lipeste pe mesajele urmatoare, deci clipboard-ul nu e necesar.
+        if (toolbarWasOn) {
+            inputPrefix?.let { prefix ->
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
+            }
         }
 
-        listener?.onMacroStart(inputPrefix != null || isBoldMode)
+        listener?.onMacroStart((inputPrefix != null || isBoldMode) && toolbarWasOn)
         listener?.onMacroCapsState(startedShifted)
 
         typingJob = scope.launch {
@@ -123,7 +132,7 @@ object MacroManager {
             }
             cachedMessages = messages
             startDelayDeferred.await()
-            runMacro(context, messages.toMutableList(), startedShifted)
+            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn)
         }
     }
 
@@ -133,10 +142,11 @@ object MacroManager {
         typingJob = null
         inputPrefix = null
         isBoldMode = false
+        toolbarWasOn = false
         cachedMessages = emptyList()
     }
 
-    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
+    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean, toolbarWasOn: Boolean) {
         val prefs = context.prefs()
         // Citim delay-urile o data la start — daca userul le schimba in timp ce ruleaza, se aplica la urmatoarea pornire
         val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
@@ -175,7 +185,9 @@ object MacroManager {
 
             val isFirstMsg = index == 1
             val prefix = inputPrefix
-            val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg
+            // Lipeste prefixul pe mesajele 2, 3, 4... DOAR daca toolbar-ul era deschis la start.
+            // Cand e inchis: primul mesaj are deja prefixul in camp (tastat de user), restul fara.
+            val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg && toolbarWasOn
 
             // Build what to type before the message content
             if (!isFirstMsg) {

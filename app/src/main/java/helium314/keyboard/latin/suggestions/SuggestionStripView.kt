@@ -227,6 +227,8 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         suggestionsStrip.layoutDirection = newLayoutDirection
     }
 
+    fun isToolbarExpanded(): Boolean = toolbarContainer.isVisible
+
     fun setToolbarVisibility(toolbarVisible: Boolean) {
         pinnedKeys.isVisible = !toolbarVisible
         suggestionsStrip.isVisible = !toolbarVisible
