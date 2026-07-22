@@ -96,9 +96,13 @@ object DumeMacroManager {
         // Verifică starea toolbar-ului ACUM, înainte de coroutine
         toolbarWasOn = Settings.readToolbarMode(context.prefs()) == ToolbarMode.EXPANDABLE
 
-        inputPrefix?.let { prefix ->
-            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dume_macro_prefix", prefix))
+        // Copiaza prefixul in clipboard DOAR daca toolbar-ul era on (EXPANDABLE).
+        // Cand toolbar e off, nu avem nevoie de clipboard — prefixul nu se mai lipeste pe mesajele urmatoare.
+        if (toolbarWasOn) {
+            inputPrefix?.let { prefix ->
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("dume_macro_prefix", prefix))
+            }
         }
 
         // onMacroStart(hasPrefix=true) → LatinIME va apela setToolbarVisibility(true)
