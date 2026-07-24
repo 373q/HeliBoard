@@ -152,9 +152,9 @@ private fun ShiftMacroTab() {
             SliderPreference(
                 name = "Legit Mode — max typos per message",
                 key = Settings.PREF_LEGIT_TYPOS,
-                description = { v: Int -> if (v == 0) "disabled" else "$v typos" },
+                description = { v: Int -> "$v typos" },
                 default = Defaults.PREF_LEGIT_TYPOS,
-                range = 0f..10f,
+                range = 1f..10f,
                 stepSize = 1,
             )
             Preference(
@@ -290,9 +290,9 @@ private fun DumeMacroTab() {
             SliderPreference(
                 name = "Legit Mode — max typos per message",
                 key = Settings.PREF_DUME_LEGIT_TYPOS,
-                description = { v: Int -> if (v == 0) "disabled" else "$v typos" },
+                description = { v: Int -> "$v typos" },
                 default = Defaults.PREF_DUME_LEGIT_TYPOS,
-                range = 0f..10f,
+                range = 1f..10f,
                 stepSize = 1,
             )
             Preference(
