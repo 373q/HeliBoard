@@ -43,7 +43,17 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     private var initialSubtype: InputMethodSubtype? = null
     private var subtypeSwitchCount = 0
 
+    // Preset mode: true când userul ține held Space (Shift) sau Comma (Dume) după long-press,
+    // așteptând apăsarea literei shortcut a unui preset.
+    private var shiftPresetMode = false
+    private var dumePresetMode = false
+
     override fun onPressKey(primaryCode: Int, repeatCount: Int, isSinglePointer: Boolean, hapticEvent: HapticEvent) {
+        // În preset mode: suprimă orice efect vizual/haptic pe tasta apăsată —
+        // nu vrem să apară animație de press pe litera shortcut.
+        if ((shiftPresetMode || dumePresetMode) && primaryCode > 0 && primaryCode.toChar().isLetter()) {
+            return
+        }
         metaOnPressKey(primaryCode)
         keyboardSwitcher.onPressKey(primaryCode, isSinglePointer, latinIME.currentAutoCapsState, latinIME.currentRecapitalizeState)
         // we need to use LatinIME for handling of key-down audio and haptics
@@ -58,6 +68,18 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     override fun onReleaseKey(primaryCode: Int, withSliding: Boolean) {
+        // Dacă userul a eliberat Space/Comma fără să fi apăsat o literă shortcut,
+        // pornim macroul normal (fără preset).
+        if (shiftPresetMode && primaryCode == ' '.code) {
+            shiftPresetMode = false
+            helium314.keyboard.latin.macro.MacroManager.toggle(latinIME)
+            return
+        }
+        if (dumePresetMode && primaryCode == ','.code) {
+            dumePresetMode = false
+            helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
+            return
+        }
         metaOnReleaseKey(primaryCode)
         keyboardSwitcher.onReleaseKey(primaryCode, withSliding, latinIME.currentAutoCapsState, latinIME.currentRecapitalizeState)
     }
@@ -102,6 +124,40 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> return settings.toggleAlwaysIncognitoMode()
+            // Long-press Space → intră în preset mode în loc să pornească imediat macro-ul.
+            // Dacă userul apasă o literă shortcut → pornim cu preset; altfel → pornim normal la release.
+            KeyCode.MACRO_TOGGLE -> {
+                shiftPresetMode = true
+                return
+            }
+            // Long-press Comma → același comportament pentru Dume.
+            KeyCode.DUME_TOGGLE -> {
+                dumePresetMode = true
+                return
+            }
+        }
+        // Dacă suntem în preset mode și userul apasă o literă → căutăm preset-ul
+        if (shiftPresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
+            shiftPresetMode = false
+            val preset = helium314.keyboard.latin.macro.PresetManager.findShiftPreset(latinIME, primaryCode.toChar())
+            if (preset != null) {
+                helium314.keyboard.latin.macro.MacroManager.startWithPreset(latinIME, preset)
+            } else {
+                // Niciun preset pe litera asta → pornim normal și lăsăm litera să se scrie
+                helium314.keyboard.latin.macro.MacroManager.toggle(latinIME)
+                // fall through — litera se procesează normal mai jos
+            }
+            return // consumăm tasta (caracterul NU se scrie, indiferent dacă e preset sau nu)
+        }
+        if (dumePresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
+            dumePresetMode = false
+            val preset = helium314.keyboard.latin.macro.PresetManager.findDumePreset(latinIME, primaryCode.toChar())
+            if (preset != null) {
+                helium314.keyboard.latin.macro.DumeMacroManager.startWithPreset(latinIME, preset)
+            } else {
+                helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
+            }
+            return
         }
         if (Settings.getValues().mIsLocked && KeyCode.isIsBlockedWhenLocked(primaryCode))
             return
