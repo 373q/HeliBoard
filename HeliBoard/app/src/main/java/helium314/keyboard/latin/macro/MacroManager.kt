@@ -6,7 +6,6 @@ import android.net.Uri
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
-import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
@@ -59,6 +58,8 @@ object MacroManager {
         fun onMacroCapsState(capsOn: Boolean)
         fun isShifted(): Boolean
         fun isCapsLocked(): Boolean
+        /** Returns whether the toolbar is currently visible/expanded. */
+        fun isToolbarExpanded(): Boolean
         /** Returns current text in the input field, or null if unavailable */
         fun getCurrentInputText(): String?
         /**
@@ -103,8 +104,9 @@ object MacroManager {
             rawInput
         }
 
-        // Verifică dacă toolbar-ul e EXPANDABLE (on) din setări
-        toolbarWasOn = Settings.readToolbarMode(context.prefs()) == ToolbarMode.EXPANDABLE
+        // Capture the toolbar's actual visible state. It may be collapsed even when
+        // the saved toolbar mode is EXPANDABLE.
+        toolbarWasOn = listener?.isToolbarExpanded() ?: false
 
         // Copiaza prefixul în clipboard DOAR dacă toolbar-ul era on.
         // Când e off, prefixul nu se mai lipeste pe mesajele urmatoare — clipboard-ul nu e necesar.

@@ -612,6 +612,10 @@ public class LatinIME extends InputMethodService implements
                 return kb != null && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
             }
             @Override
+            public boolean isToolbarExpanded() {
+                return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
+            }
+            @Override
             public String getCurrentInputText() {
                 final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
@@ -736,6 +740,10 @@ public class LatinIME extends InputMethodService implements
                 final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
                 return kb != null && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
                         || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
+            }
+            @Override
+            public boolean isToolbarExpanded() {
+                return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
             }
             @Override
             public String getCurrentInputText() {

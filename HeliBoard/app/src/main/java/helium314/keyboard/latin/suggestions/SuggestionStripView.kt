@@ -512,6 +512,9 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         pinnedKeys.findViewWithTag<View>(ToolbarKey.VOICE)?.isVisible = show
     }
 
+    /** Returns the toolbar's current visible state, rather than only its saved setting. */
+    fun isToolbarExpanded(): Boolean = toolbarContainer.isVisible
+
     private fun updateKeys() {
         updateVoiceKey()
         val settingsValues = Settings.getValues()
