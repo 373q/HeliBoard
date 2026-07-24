@@ -364,6 +364,11 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
             return;
         }
+        // Preset mode (space/comma ținut pentru macro shortcut): suprima orice efect vizual
+        // pe orice tastă apăsată în acea fereastră — exact același mecanism ca Space/Comma.
+        if (KeyboardActionListenerImpl.presetModeActive) {
+            return;
+        }
         key.onPressed();
         invalidateKey(key);
 
