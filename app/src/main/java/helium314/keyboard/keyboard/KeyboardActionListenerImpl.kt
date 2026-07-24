@@ -48,6 +48,12 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     private var shiftPresetMode = false
     private var dumePresetMode = false
 
+    // Codul tastei shortcut consumate în preset mode (setată în onCodeInput, citită în onReleaseKey).
+    // Permite suprimarea efectelor vizuale de release pe litera shortcut — altfel onReleaseKey
+    // rulează normal după ce shiftPresetMode/dumePresetMode au fost deja setate pe false în
+    // onCodeInput, și tastatura redă animația de release degeaba pe litera apăsată.
+    private var consumedPresetKeyCode = -1
+
     override fun onPressKey(primaryCode: Int, repeatCount: Int, isSinglePointer: Boolean, hapticEvent: HapticEvent) {
         // În preset mode: suprimă orice efect vizual/haptic pe tasta apăsată —
         // nu vrem să apară animație de press pe litera shortcut.
@@ -80,6 +86,14 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
             dumePresetMode = false
             presetModeActive = false
             helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
+            return
+        }
+        // Suprimă efectele vizuale de release pe tasta shortcut consumată în preset mode.
+        // Fără asta: onCodeInput setează shiftPresetMode=false, dar onReleaseKey e chemat
+        // ulterior (deja fără preset mode activ) → keyboardSwitcher.onReleaseKey redă
+        // animația de release pe litera shortcut degeaba.
+        if (primaryCode == consumedPresetKeyCode) {
+            consumedPresetKeyCode = -1
             return
         }
         metaOnReleaseKey(primaryCode)
@@ -144,6 +158,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         if (shiftPresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             shiftPresetMode = false
             presetModeActive = false
+            // Salvăm codul tastei ca să suprimăm efectele vizuale de release în onReleaseKey
+            consumedPresetKeyCode = primaryCode
             val preset = helium314.keyboard.latin.macro.PresetManager.findShiftPreset(latinIME, primaryCode.toChar())
             if (preset != null) {
                 helium314.keyboard.latin.macro.MacroManager.startWithPreset(latinIME, preset)
@@ -157,6 +173,8 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         if (dumePresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             dumePresetMode = false
             presetModeActive = false
+            // Salvăm codul tastei ca să suprimăm efectele vizuale de release în onReleaseKey
+            consumedPresetKeyCode = primaryCode
             val preset = helium314.keyboard.latin.macro.PresetManager.findDumePreset(latinIME, primaryCode.toChar())
             if (preset != null) {
                 helium314.keyboard.latin.macro.DumeMacroManager.startWithPreset(latinIME, preset)

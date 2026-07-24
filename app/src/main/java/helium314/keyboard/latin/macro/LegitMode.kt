@@ -85,7 +85,8 @@ object LegitMode {
         val shouldMakeTypo = correctChar.isLetter() && Random.nextFloat() < TYPO_PROBABILITY && budget.tryConsume()
 
         if (shouldMakeTypo) {
-            val count = lettersPerTypo.coerceAtLeast(1)
+            // Random între 1 și lettersPerTypo — nu mereu fix la max, ca un om real
+            val count = if (lettersPerTypo <= 1) 1 else Random.nextInt(1, lettersPerTypo + 1)
             // 1. Tipărește `count` litere greșite adiacente
             repeat(count) {
                 val wrongChar = getWrongChar(correctChar) ?: return@repeat

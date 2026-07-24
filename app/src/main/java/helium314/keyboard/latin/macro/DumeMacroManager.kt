@@ -169,8 +169,10 @@ object DumeMacroManager {
         var totalSent = 0
 
         // Warmup: sincronizăm connection-ul înainte de prima tastă (același fix ca Shift).
+        // 150ms în loc de 80ms — Comma-ul de la long-press poate fi încă ținut apăsat când
+        // macro-ul pornește și are nevoie de timp să se reseteze complet înainte de prima tastă.
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        delay(80)
+        delay(150)
 
         var warmupMs = 0
         while (warmupMs < 1000) {

@@ -647,6 +647,9 @@ public class LatinIME extends InputMethodService implements
                 // Sincronizează starea internă a InputLogic cu app-ul înainte de prima tastă.
                 // Rezolvă bug-ul: după long-press + setAlphabetShiftLockedKeyboard(), cursorul
                 // InputLogic poate fi out-of-sync → commitText() e silently dropped.
+                // finishInput() șterge orice composing word activ (ramas din long-press Space)
+                // — fără asta, prima tastă merge în buffer-ul de composing și e silently dropped.
+                mInputLogic.finishInput();
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
                 mInputLogic.mConnection.requestCursorUpdates(true, true);
             }
@@ -752,6 +755,9 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroPrimeConnection() {
+                // La fel ca Shift: finishInput() curăță composing word-ul rămas din long-press
+                // Comma înainte de prima tastă, altfel prima literă e silently dropped.
+                mInputLogic.finishInput();
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
                 mInputLogic.mConnection.requestCursorUpdates(true, true);
             }

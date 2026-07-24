@@ -189,9 +189,11 @@ object MacroManager {
         // Warmup: sincronizăm connection-ul înainte de prima tastă.
         // Imediat după long-press + keyboard switch (onMacroCapsState), InputLogic poate
         // avea cursorul out-of-sync → prima scriere e silently dropped.
-        // tryFixIncorrectCursorPosition() + requestCursorUpdates() rezolvă asta.
+        // finishInput() + tryFixIncorrectCursorPosition() + requestCursorUpdates() rezolvă asta.
+        // 150ms în loc de 80ms — Space-ul de la long-press poate fi încă ținut apăsat când
+        // macro-ul pornește și are nevoie de timp să se reseteze complet înainte de prima tastă.
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        delay(80)
+        delay(150)
 
         // Warmup retry: dacă connection-ul era stale (null) chiar la pornire, așteptăm
         // să devină activ (max 1s) în loc să oprim definitiv la primul null.
