@@ -638,6 +638,26 @@ public class LatinIME extends InputMethodService implements
                     }
                 }
             }
+            @Override
+            public void onMacroMoveCursor(int offset) {
+                // Mutăm cursorul cu DPAD_LEFT/RIGHT — funcționează cross-app și e urmărit corect de IME
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                final int keyCode = offset < 0 ? android.view.KeyEvent.KEYCODE_DPAD_LEFT : android.view.KeyEvent.KEYCODE_DPAD_RIGHT;
+                final int steps = Math.abs(offset);
+                for (int i = 0; i < steps; i++) {
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode));
+                }
+            }
+            @Override
+            public void onMacroDeleteForward() {
+                // Șterge caracterul DUPĂ cursor (forward delete)
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic != null) {
+                    ic.deleteSurroundingText(0, 1);
+                }
+            }
         });
 
         // Register Dume macro listener — same implementation as Shift macro
@@ -732,6 +752,24 @@ public class LatinIME extends InputMethodService implements
                             kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
                         }
                     }
+                }
+            }
+            @Override
+            public void onMacroMoveCursor(int offset) {
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                final int keyCode = offset < 0 ? android.view.KeyEvent.KEYCODE_DPAD_LEFT : android.view.KeyEvent.KEYCODE_DPAD_RIGHT;
+                final int steps = Math.abs(offset);
+                for (int i = 0; i < steps; i++) {
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode));
+                }
+            }
+            @Override
+            public void onMacroDeleteForward() {
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic != null) {
+                    ic.deleteSurroundingText(0, 1);
                 }
             }
         });

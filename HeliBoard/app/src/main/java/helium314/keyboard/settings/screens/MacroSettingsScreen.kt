@@ -179,6 +179,27 @@ private fun ShiftMacroTab() {
                 range = 1f..10f,
                 stepSize = 1,
             )
+            SliderPreference(
+                name = "Legit Mode — cursor correction mode",
+                key = Settings.PREF_LEGIT_CURSOR_MODE,
+                description = { v: Int -> when (v) {
+                    0 -> "Off (backspace imediat)"
+                    1 -> "Direct fix (cursor merge la literă)"
+                    2 -> "Retype line (șterge rândul, rescrie)"
+                    else -> "Random (Direct sau Retype)"
+                }},
+                default = Defaults.PREF_LEGIT_CURSOR_MODE,
+                range = 0f..3f,
+                stepSize = 1,
+            )
+            SliderPreference(
+                name = "Legit Mode — cursor speed (ms/pas)",
+                key = Settings.PREF_LEGIT_CURSOR_SPEED,
+                description = { v: Int -> if (v == 0) "instant" else "${v}ms/pas" },
+                default = Defaults.PREF_LEGIT_CURSOR_SPEED,
+                range = 0f..3000f,
+                stepSize = 10,
+            )
             Preference(
                 name = if (isRunning) "Stop Macro (Shift)" else "Start Macro (Shift)",
                 description = if (isRunning) "Running" else "Stopped",
@@ -316,6 +337,27 @@ private fun DumeMacroTab() {
                 default = Defaults.PREF_DUME_LEGIT_TYPOS,
                 range = 1f..10f,
                 stepSize = 1,
+            )
+            SliderPreference(
+                name = "Legit Mode — cursor correction mode",
+                key = Settings.PREF_DUME_LEGIT_CURSOR_MODE,
+                description = { v: Int -> when (v) {
+                    0 -> "Off (backspace imediat)"
+                    1 -> "Direct fix (cursor merge la literă)"
+                    2 -> "Retype line (șterge rândul, rescrie)"
+                    else -> "Random (Direct sau Retype)"
+                }},
+                default = Defaults.PREF_DUME_LEGIT_CURSOR_MODE,
+                range = 0f..3f,
+                stepSize = 1,
+            )
+            SliderPreference(
+                name = "Legit Mode — cursor speed (ms/pas)",
+                key = Settings.PREF_DUME_LEGIT_CURSOR_SPEED,
+                description = { v: Int -> if (v == 0) "instant" else "${v}ms/pas" },
+                default = Defaults.PREF_DUME_LEGIT_CURSOR_SPEED,
+                range = 0f..3000f,
+                stepSize = 10,
             )
             Preference(
                 name = if (isRunning) "Stop Macro (Dume)" else "Start Macro (Dume)",

@@ -105,7 +105,7 @@ object DumeMacroManager {
             }
         }
 
-        listener?.onMacroStart(false)
+        listener?.onMacroStart(inputPrefix != null && toolbarWasOn)
 
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
@@ -145,6 +145,8 @@ object DumeMacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
+        val legitCursorMode = prefs.getInt(Settings.PREF_DUME_LEGIT_CURSOR_MODE, Defaults.PREF_DUME_LEGIT_CURSOR_MODE)
+        val legitCursorSpeed = prefs.getInt(Settings.PREF_DUME_LEGIT_CURSOR_SPEED, Defaults.PREF_DUME_LEGIT_CURSOR_SPEED).toLong()
         val randomPauseEnabled = prefs.getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)
         val randomPauseMaxMs = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS, Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS).toLong()
         val randomPauseCount = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_COUNT, Defaults.PREF_DUME_RANDOM_PAUSE_COUNT)
@@ -232,6 +234,7 @@ object DumeMacroManager {
             val pausePositions: Set<Int> = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && line.isNotEmpty()) {
                 (0 until line.length).shuffled().take(randomPauseCount).toHashSet()
             } else emptySet()
+            val linePrefix = StringBuilder() // textul tastat până acum (pentru RETYPE_LINE)
             for ((charIndex, char) in line.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -246,13 +249,19 @@ object DumeMacroManager {
                         pauseDelay = legitPauseActions,
                         deleteDelay = legitDeleteDelay,
                         writeDelay = legitWriteDelay,
+                        cursorMode = legitCursorMode,
+                        cursorSpeedDelay = legitCursorSpeed,
+                        messagePrefix = linePrefix.toString(),
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
-                        deleteChar = { listener?.onMacroDeleteChar() }
+                        deleteChar = { listener?.onMacroDeleteChar() },
+                        moveCursor = { offset -> listener?.onMacroMoveCursor(offset) },
+                        deleteForward = { listener?.onMacroDeleteForward() }
                     )
                 } else {
                     withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 }
+                linePrefix.append(charToType)
 
                 val d = when (charIndex) {
                     0 -> 120L

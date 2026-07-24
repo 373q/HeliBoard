@@ -6,6 +6,7 @@ import android.net.Uri
 import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.ToolbarMode
 import helium314.keyboard.latin.utils.prefs
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
@@ -27,9 +28,7 @@ object MacroManager {
     private var typingJob: Job? = null
     private var isRunning = false
 
-    // Thread dedicat, separat de pool-ul Dispatchers.Default (care e shared cu restul app-ului).
-    // Ridicam prioritatea threadului ca timing-ul macro-ului sa nu fie afectat de alte task-uri
-    // sau de GC pauses cauzate de alte coroutine care ruleaza pe acelasi pool.
+    // Thread dedicat, separat de pool-ul Dispatchers.Default.
     private val macroExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "MacroTypingThread").apply {
             priority = Thread.MAX_PRIORITY
@@ -40,15 +39,12 @@ object MacroManager {
 
     private var inputPrefix: String? = null
     private var isBoldMode = false
+    // true dacă toolbar-ul era EXPANDABLE (on) la momentul pornirii macro-ului.
+    // Controlează: (1) dacă prefixul se copiază în clipboard, (2) dacă se lipește la mesajele 2+.
+    private var toolbarWasOn: Boolean = false
 
-    // Cache-ul mesajelor — incarcate o singura data la start, nu la fiecare iteratie din loop
+    // Cache-ul mesajelor
     private var cachedMessages: List<String> = emptyList()
-
-    // Cache persistent al fisierului parsat, valabil intre porniri succesive ale macro-ului.
-    // Fara asta, fiecare start() re-citeste si re-parseaza fisierul de pe disc (poate fi 15MB+),
-    // ceea ce introduce o intarziere de 2-3s la pornire INDIFERENT de "Start delay" (care e 0
-    // doar in paralel cu incarcarea, nu o elimina). Cache-ul e invalidat doar cand fisierul e
-    // re-importat (vezi importFile), nu la fiecare stop().
     private var messagesFileCache: List<String>? = null
     private var messagesFileCacheMtime: Long = -1L
 
@@ -67,11 +63,19 @@ object MacroManager {
         fun getCurrentInputText(): String?
         /**
          * Apasă backspace o singură dată — folosit de Legit Mode pentru a șterge
-         * caracterul greșit înainte de corectare. Implementarea implicită trimite
-         * caracterul BS (0x08) prin onMacroTypeChar; suprascrie în keyboard service
-         * dacă ai nevoie de KeyCode.DELETE direct.
+         * caracterul greșit înainte de corectare.
          */
         fun onMacroDeleteChar() { onMacroTypeChar('\b') }
+        /**
+         * Mută cursorul cu [offset] poziții (negativ = stânga, pozitiv = dreapta).
+         * Folosit de Legit Mode cursor correction. Implementare implicită: no-op.
+         */
+        fun onMacroMoveCursor(offset: Int) {}
+        /**
+         * Șterge caracterul DUPĂ cursor (forward delete).
+         * Folosit de Legit Mode cursor correction. Implementare implicită: no-op.
+         */
+        fun onMacroDeleteForward() {}
     }
 
     fun isRunning() = isRunning
@@ -99,23 +103,24 @@ object MacroManager {
             rawInput
         }
 
-        // Copiaza prefixul in clipboard ca sa poata fi lipit rapid la mesajele urmatoare
-        inputPrefix?.let { prefix ->
-            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
+        // Verifică dacă toolbar-ul e EXPANDABLE (on) din setări
+        toolbarWasOn = Settings.readToolbarMode(context.prefs()) == ToolbarMode.EXPANDABLE
+
+        // Copiaza prefixul în clipboard DOAR dacă toolbar-ul era on.
+        // Când e off, prefixul nu se mai lipeste pe mesajele urmatoare — clipboard-ul nu e necesar.
+        if (toolbarWasOn) {
+            inputPrefix?.let { prefix ->
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("macro_prefix", prefix))
+            }
         }
 
-        listener?.onMacroStart(isBoldMode)
+        listener?.onMacroStart((inputPrefix != null || isBoldMode) && toolbarWasOn)
         listener?.onMacroCapsState(startedShifted)
 
         typingJob = scope.launch {
-            // Pornim delay-ul de start in paralel cu incarcarea fisierului — daca userul a pus
-            // 0ms, nu vrem ca parse-ul unui fisier de 15MB+ sa adauge un delay "ascuns" la start.
             val startDelay = context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
             val startDelayDeferred = async { delay(startDelay) }
-            // Foloseste cache-ul persistent daca exista si fisierul nu s-a schimbat — evita
-            // re-citirea + re-parse-ul de pe disc la fiecare start (asta e sursa reala a
-            // "start delay"-ului de 2-3s vazut chiar cu Start delay = 0ms).
             val messages = withContext(Dispatchers.IO) { loadMessagesCached(context) }
             if (messages.isEmpty()) {
                 Log.w(TAG, "No messages to send")
@@ -125,7 +130,7 @@ object MacroManager {
             }
             cachedMessages = messages
             startDelayDeferred.await()
-            runMacro(context, messages.toMutableList(), startedShifted)
+            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn)
         }
     }
 
@@ -135,12 +140,12 @@ object MacroManager {
         typingJob = null
         inputPrefix = null
         isBoldMode = false
+        toolbarWasOn = false
         cachedMessages = emptyList()
     }
 
-    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean) {
+    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean, toolbarWasOn: Boolean) {
         val prefs = context.prefs()
-        // Citim delay-urile o data la start — daca userul le schimba in timp ce ruleaza, se aplica la urmatoarea pornire
         val charDelay = prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
         val msgDelay = prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
         val legitMode = prefs.getBoolean(Settings.PREF_SHIFT_LEGIT_MODE, false)
@@ -148,10 +153,11 @@ object MacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
+        val legitCursorMode = prefs.getInt(Settings.PREF_LEGIT_CURSOR_MODE, Defaults.PREF_LEGIT_CURSOR_MODE)
+        val legitCursorSpeed = prefs.getInt(Settings.PREF_LEGIT_CURSOR_SPEED, Defaults.PREF_LEGIT_CURSOR_SPEED).toLong()
         val randomPauseEnabled = prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)
         val randomPauseMaxMs = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS).toLong()
         val randomPauseCount = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT)
-        // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
         var index = 0
@@ -159,7 +165,6 @@ object MacroManager {
         while (isRunning) {
             if (!isRunning) return
 
-            // Auto-stop: dacă tastatura a dispărut / nu mai există câmp de input activ
             val inputAvailable = withContext(Dispatchers.Main) {
                 listener?.getCurrentInputText() != null
             }
@@ -180,14 +185,15 @@ object MacroManager {
 
             val isFirstMsg = index == 1
             val prefix = inputPrefix
-            val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg
+            // Lipeste prefixul pe mesajele 2, 3, 4... DOAR dacă toolbar-ul era on la start.
+            // Când e off: primul mesaj are deja prefixul în câmp (tastat de user), restul fără.
+            val needsPrefix = !prefix.isNullOrEmpty() && !isFirstMsg && toolbarWasOn
 
-            // Build what to type before the message content
             if (!isFirstMsg) {
                 if (needsPrefix) {
                     val p = if (capsOn) prefix!!.uppercase() else prefix!!
                     withContext(Dispatchers.Main) { listener?.onMacroPasteText(p) }
-                    delay(250) // mai mult timp pentru paste să se așeze în câmp înainte să înceapă tastarea
+                    delay(250)
                     if (!isRunning) return
                 }
                 if (isBoldMode) {
@@ -208,12 +214,13 @@ object MacroManager {
                 }
             }
 
-            // Tipărește mesajul caracter cu caracter (cu Legit Mode dacă e activat)
-            // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
+            // Tipărește mesajul caracter cu caracter
             val typoBudget = LegitMode.TypoBudget(legitTypos)
             val pausePositions: Set<Int> = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && msg.isNotEmpty()) {
                 (0 until msg.length).shuffled().take(randomPauseCount).toHashSet()
             } else emptySet()
+
+            val msgPrefix = StringBuilder() // textul tastat pana la caracterul curent (pentru RETYPE_LINE)
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -228,13 +235,19 @@ object MacroManager {
                         pauseDelay = legitPauseActions,
                         deleteDelay = legitDeleteDelay,
                         writeDelay = legitWriteDelay,
+                        cursorMode = legitCursorMode,
+                        cursorSpeedDelay = legitCursorSpeed,
+                        messagePrefix = msgPrefix.toString(),
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
-                        deleteChar = { listener?.onMacroDeleteChar() }
+                        deleteChar = { listener?.onMacroDeleteChar() },
+                        moveCursor = { offset -> listener?.onMacroMoveCursor(offset) },
+                        deleteForward = { listener?.onMacroDeleteForward() }
                     )
                 } else {
                     withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 }
+                msgPrefix.append(charToType)
 
                 val d = when (charIndex) {
                     0 -> 120L
@@ -274,11 +287,7 @@ object MacroManager {
                 listener?.onMacroSendMessage()
             }
 
-            // Așteptăm ca aplicația să proceseze trimiterea și să golească câmpul de input.
-            // Fără asta, pe Discord/Instagram (care au latență de send de 200-400ms), prefixul
-            // mesajului următor ajunge să fie lipit în câmpul anterior înainte ca acesta să fie
-            // golit, rezultând text sudat + primele litere tăiate la mesajul următor.
-            delay(150) // timp minim pentru ca Enter-ul să fie dispatched la app
+            delay(150)
             val maxWaitAfterSend = 3000L
             val pollInterval = 40L
             var waitedAfterSend = 0L
@@ -286,8 +295,8 @@ object MacroManager {
                 delay(pollInterval)
                 waitedAfterSend += pollInterval
                 val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
-                if (txt == null) { isRunning = false; return } // am pierdut focusul
-                if (txt.isEmpty()) break // câmpul e golit, safe să continuăm
+                if (txt == null) { isRunning = false; return }
+                if (txt.isEmpty()) break
             }
 
             if (!isRunning) return
@@ -295,11 +304,6 @@ object MacroManager {
         }
     }
 
-    /**
-     * Ca loadMessages(), dar reutilizeaza rezultatul parsat anterior daca fisierul
-     * (marcat prin lastModified()) nu s-a schimbat de la ultima citire. Evita costul de
-     * I/O + parsing la fiecare pornire a macro-ului pentru fisiere mari (15MB+).
-     */
     @Synchronized
     fun loadMessagesCached(context: Context): List<String> {
         val file = getMacroFile(context)
@@ -321,10 +325,6 @@ object MacroManager {
         val file = getMacroFile(context)
         if (!file.exists()) return emptyList()
         return try {
-            // Citim linie cu linie si grupam pe linii goale, in loc sa tinem tot fisierul
-            // ca un singur String urias + un array de rezultate Regex.split (foarte costisitor
-            // pe heap pentru fisiere de 15MB+, declanseaza GC frecvent care intarzie delay()-urile
-            // din macro chiar daca delay-ul setat e mic).
             val messages = ArrayList<String>()
             val current = StringBuilder()
             file.bufferedReader().useLines { lines ->
@@ -355,6 +355,9 @@ object MacroManager {
                 ?: return false
             val file = getMacroFile(context)
             file.writeText(content)
+            // Invalidăm cache-ul ca la pornirea următoare să se citească fișierul nou
+            messagesFileCache = null
+            messagesFileCacheMtime = -1L
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error importing macro file", e)

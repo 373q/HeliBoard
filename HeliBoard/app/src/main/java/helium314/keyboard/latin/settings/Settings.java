@@ -233,6 +233,12 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_DUME_RANDOM_PAUSE_ENABLED = "dume_random_pause_enabled";
     public static final String PREF_DUME_RANDOM_PAUSE_MAX_MS = "dume_random_pause_max_ms";
     public static final String PREF_DUME_RANDOM_PAUSE_COUNT = "dume_random_pause_count";
+    // Legit Mode cursor correction (Shift)
+    public static final String PREF_LEGIT_CURSOR_MODE = "legit_cursor_mode";
+    public static final String PREF_LEGIT_CURSOR_SPEED = "legit_cursor_speed";
+    // Legit Mode cursor correction (Dume)
+    public static final String PREF_DUME_LEGIT_CURSOR_MODE = "dume_legit_cursor_mode";
+    public static final String PREF_DUME_LEGIT_CURSOR_SPEED = "dume_legit_cursor_speed";
 
     private Context mContext;
     private SharedPreferences mPrefs;

@@ -204,6 +204,8 @@ object Defaults {
     const val PREF_LEGIT_PAUSE_ACTIONS = 40
     const val PREF_LEGIT_WRITE_DELAY = 100
     const val PREF_LEGIT_TYPOS = 2
+    const val PREF_LEGIT_CURSOR_MODE = 0    // 0=OFF, 1=DIRECT, 2=RETYPE_LINE, 3=RANDOM
+    const val PREF_LEGIT_CURSOR_SPEED = 150 // ms per cursor step
     // Macro defaults (Dume)
     const val PREF_DUME_CHAR_DELAY = 80
     const val PREF_DUME_MSG_DELAY = 3000
@@ -213,6 +215,8 @@ object Defaults {
     const val PREF_DUME_LEGIT_PAUSE_ACTIONS = 40
     const val PREF_DUME_LEGIT_WRITE_DELAY = 100
     const val PREF_DUME_LEGIT_TYPOS = 2
+    const val PREF_DUME_LEGIT_CURSOR_MODE = 0    // 0=OFF, 1=DIRECT, 2=RETYPE_LINE, 3=RANDOM
+    const val PREF_DUME_LEGIT_CURSOR_SPEED = 150 // ms per cursor step
     const val PREF_DUME_RANDOM_PAUSE_ENABLED = false
     const val PREF_DUME_RANDOM_PAUSE_MAX_MS = 1500
     const val PREF_DUME_RANDOM_PAUSE_COUNT = 3
