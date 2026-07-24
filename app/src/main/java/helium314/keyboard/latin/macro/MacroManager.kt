@@ -76,6 +76,15 @@ object MacroManager {
          * dacă ai nevoie de KeyCode.DELETE direct.
          */
         fun onMacroDeleteChar() { onMacroTypeChar('\b') }
+
+        /**
+         * Sincronizează starea internă a input connection-ului cu app-ul.
+         * Chemat o singură dată la pornirea macro-ului, înainte de prima tastă.
+         * Rezolvă bug-ul unde prima tastă e silently dropped după long-press +
+         * keyboard layout switch (cursorul InputLogic e out-of-sync cu app-ul).
+         * Default no-op — suprascris în keyboard service.
+         */
+        fun onMacroPrimeConnection() {}
     }
 
     fun isRunning() = isRunning
@@ -171,6 +180,23 @@ object MacroManager {
 
         messages.shuffle()
         var index = 0
+
+        // Warmup: sincronizăm connection-ul înainte de prima tastă.
+        // Imediat după long-press + keyboard switch (onMacroCapsState), InputLogic poate
+        // avea cursorul out-of-sync → prima scriere e silently dropped.
+        // tryFixIncorrectCursorPosition() + requestCursorUpdates() rezolvă asta.
+        withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
+        delay(80)
+
+        // Warmup retry: dacă connection-ul era stale (null) chiar la pornire, așteptăm
+        // să devină activ (max 1s) în loc să oprim definitiv la primul null.
+        var warmupMs = 0
+        while (warmupMs < 1000) {
+            val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
+            if (alive) break
+            delay(50)
+            warmupMs += 50
+        }
 
         while (isRunning) {
             if (!isRunning) return

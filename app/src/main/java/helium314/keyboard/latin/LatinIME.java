@@ -642,6 +642,14 @@ public class LatinIME extends InputMethodService implements
             public boolean isToolbarExpanded() {
                 return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
             }
+            @Override
+            public void onMacroPrimeConnection() {
+                // Sincronizează starea internă a InputLogic cu app-ul înainte de prima tastă.
+                // Rezolvă bug-ul: după long-press + setAlphabetShiftLockedKeyboard(), cursorul
+                // InputLogic poate fi out-of-sync → commitText() e silently dropped.
+                mInputLogic.mConnection.tryFixIncorrectCursorPosition();
+                mInputLogic.mConnection.requestCursorUpdates(true, true);
+            }
         });
 
         // Register Dume macro listener — same implementation as Shift macro
@@ -741,6 +749,11 @@ public class LatinIME extends InputMethodService implements
             @Override
             public boolean isToolbarExpanded() {
                 return mSuggestionStripView != null && mSuggestionStripView.isToolbarExpanded();
+            }
+            @Override
+            public void onMacroPrimeConnection() {
+                mInputLogic.mConnection.tryFixIncorrectCursorPosition();
+                mInputLogic.mConnection.requestCursorUpdates(true, true);
             }
         });
     }

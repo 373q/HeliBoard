@@ -168,6 +168,18 @@ object DumeMacroManager {
         var lineIndexInGroup = 0
         var totalSent = 0
 
+        // Warmup: sincronizăm connection-ul înainte de prima tastă (același fix ca Shift).
+        withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
+        delay(80)
+
+        var warmupMs = 0
+        while (warmupMs < 1000) {
+            val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
+            if (alive) break
+            delay(50)
+            warmupMs += 50
+        }
+
         while (isRunning) {
             if (!isRunning) return
 
