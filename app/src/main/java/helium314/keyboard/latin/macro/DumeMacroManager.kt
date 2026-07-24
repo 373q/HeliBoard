@@ -231,6 +231,10 @@ object DumeMacroManager {
             // Tipărește linia caracter cu caracter
             // Budget nou per mesaj — max 1-2 greșeli pe tot mesajul, nu pe fiecare literă
             val typoBudget = LegitMode.TypoBudget(legitTypos)
+            // Pre-alege pozițiile unde se inserează pauze mid-typing (random în mesaj)
+            val midTypingPausePositions = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && line.length > 1) {
+                (1 until line.length).shuffled().take(randomPauseCount).toSet()
+            } else emptySet()
             for ((charIndex, char) in line.withIndex()) {
                 if (!isRunning) return
                 val capsNow = listener?.isCapsLocked() ?: false
@@ -261,6 +265,12 @@ object DumeMacroManager {
                     else -> charDelay
                 }
                 delay(d)
+
+                // Pauză mid-typing — simulează că omul s-a oprit din scris
+                if (charIndex in midTypingPausePositions) {
+                    if (!isRunning) return
+                    delay(Random.nextLong(randomPauseMaxMs / 3, randomPauseMaxMs + 1L))
+                }
                 if (!isRunning) return
             }
 
@@ -289,15 +299,6 @@ object DumeMacroManager {
 
             if (!isRunning) return
             delay(msgDelay)
-
-            // Random pause — x pauze aleatorii per mesaj
-            if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
-                repeat(randomPauseCount) {
-                    if (!isRunning) return
-                    val pauseMs = Random.nextLong(0L, randomPauseMaxMs + 1L)
-                    delay(pauseMs)
-                }
-            }
         }
     }
 
