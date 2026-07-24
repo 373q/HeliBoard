@@ -11,8 +11,8 @@ import kotlin.random.Random
  *
  * Moduri de corectare:
  *  0 = OFF      — backspace imediat (comportament vechi)
- *  1 = DIRECT   — cursorul se mută la litera greșită, o șterge forward, retastează corect
- *  2 = RETYPE_LINE — cursorul se mută la începutul textului tastat, șterge totul, retastează corect
+ *  1 = DIRECT   — șterge litera greșită cu backspace și retastează corect
+ *  2 = RETYPE_LINE — șterge linia curentă cu backspace, apoi o retastează corect
  *  3 = RANDOM   — alege aleatoriu între DIRECT și RETYPE_LINE
  */
 object LegitMode {
@@ -71,13 +71,13 @@ object LegitMode {
      * @param deleteDelay     Delay după ștergere (ms)
      * @param writeDelay      Delay după retastare corect (ms)
      * @param cursorMode      0=OFF, 1=DIRECT, 2=RETYPE_LINE, 3=RANDOM
-     * @param cursorSpeedDelay  Delay per pas de mutare cursor (ms)
-     * @param messagePrefix   Textul deja tastat înainte de acest caracter (pentru RETYPE_LINE)
+     * @param cursorSpeedDelay  Delay per pas de corecție (ms)
+     * @param messagePrefix   Textul deja tastat în linia curentă (pentru RETYPE_LINE)
      * @param isRunning       Verifică dacă macro-ul mai rulează
      * @param typeChar        Callback pentru a trimite un caracter
      * @param deleteChar      Callback pentru backspace (șterge ÎNAINTE de cursor)
-     * @param moveCursor      Callback pentru a muta cursorul cu N pași (negativ=stânga, pozitiv=dreapta)
-     * @param deleteForward   Callback pentru a șterge caracterul DUPĂ cursor
+     * @param moveCursor      Callback legacy pentru mutarea cursorului
+     * @param deleteForward   Callback legacy pentru ștergere înainte
      */
     suspend fun typeCharWithPossibleTypo(
         correctChar: Char,
@@ -119,14 +119,9 @@ object LegitMode {
 
         when (actualMode) {
             1 -> {
-                // DIRECT: mută cursorul la litera greșită, șterge forward, retastează
-                // Cursorul e după litera greșită → mutăm stânga 1
-                withContext(Dispatchers.Main) { moveCursor(-1) }
-                delay(cursorSpeedDelay.coerceAtLeast(10L))
-                if (!isRunning()) return
-
-                // Șterge litera greșită (forward delete)
-                withContext(Dispatchers.Main) { deleteForward() }
+                // DIRECT: cursorul este deja după litera greșită. Apasă backspace
+                // exact ca utilizatorul, astfel șterge numai ultimul caracter.
+                withContext(Dispatchers.Main) { deleteChar() }
                 delay(deleteDelay)
                 if (!isRunning()) return
 
@@ -136,29 +131,24 @@ object LegitMode {
             }
 
             2 -> {
-                // RETYPE_LINE: mută cursorul la început, șterge tot, retastează de la 0
-                val totalTyped = messagePrefix.length + 1  // prefix + litera greșită tocmai tastată
-                val stepDelay = cursorSpeedDelay.coerceAtLeast(0L)
+                // RETYPE_LINE: cursorul este deja după litera greșită. Ștergem rândul
+                // înapoi, exact ca la apăsarea repetată a tastei Backspace. Astfel:
+                // - liniile anterioare rămân intacte;
+                // - fiecare apăsare este vizibilă pe tasta Backspace;
+                // - după rescriere cursorul ajunge din nou la finalul liniei.
+                val currentLinePrefix = messagePrefix.substringAfterLast('\n')
+                val totalTyped = currentLinePrefix.length + 1 // rândul curent + litera greșită
+                val stepDelay = cursorSpeedDelay.coerceAtLeast(10L)
 
-                // Mută cursorul la stânga pas cu pas până la începutul rândului
                 repeat(totalTyped) {
                     if (!isRunning()) return
-                    withContext(Dispatchers.Main) { moveCursor(-1) }
+                    withContext(Dispatchers.Main) { deleteChar() }
                     if (stepDelay > 0L) delay(stepDelay)
                 }
                 if (!isRunning()) return
 
-                // Șterge tot ce era scris (forward delete)
-                val delDelay = (deleteDelay / totalTyped.coerceAtLeast(1)).coerceAtLeast(0L)
-                repeat(totalTyped) {
-                    if (!isRunning()) return
-                    withContext(Dispatchers.Main) { deleteForward() }
-                    if (delDelay > 0L) delay(delDelay)
-                }
-                if (!isRunning()) return
-
-                // Retastează prefixul
-                for (c in messagePrefix) {
+                // Retastează prefixul rândului curent
+                for (c in currentLinePrefix) {
                     if (!isRunning()) return
                     withContext(Dispatchers.Main) { typeChar(c) }
                     delay(writeDelay)

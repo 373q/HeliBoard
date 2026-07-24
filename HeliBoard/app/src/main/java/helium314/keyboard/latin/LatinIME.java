@@ -619,11 +619,18 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroDeleteChar() {
-                // Must send the real KeyCode.DELETE, not a '\b' char via onMacroTypeChar —
-                // onCodeInput() doesn't treat code point 8 as a backspace, so Legit Mode's
-                // typo-then-correct step silently failed to erase the wrong character before.
+                // Dispatch the same Android key event as a physical Backspace press.
+                // Routing this through onCodeInput() would enter the IME's composition
+                // deletion logic, which can delete a whole composing word instead of one
+                // character in some editors.
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
-                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic != null) {
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,
+                            android.view.KeyEvent.KEYCODE_DEL));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,
+                            android.view.KeyEvent.KEYCODE_DEL));
+                }
 
                 // Show the delete key being pressed, same as a real tap
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
@@ -739,7 +746,13 @@ public class LatinIME extends InputMethodService implements
             @Override
             public void onMacroDeleteChar() {
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
-                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic != null) {
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN,
+                            android.view.KeyEvent.KEYCODE_DEL));
+                    ic.sendKeyEvent(new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP,
+                            android.view.KeyEvent.KEYCODE_DEL));
+                }
 
                 // Show the delete key being pressed, same as a real tap
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
