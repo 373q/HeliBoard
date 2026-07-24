@@ -52,6 +52,8 @@ import helium314.keyboard.latin.common.Colors;
 import helium314.keyboard.latin.common.Constants;
 import helium314.keyboard.latin.common.CoordinateUtils;
 import helium314.keyboard.latin.define.DebugFlags;
+import helium314.keyboard.latin.macro.DumeMacroManager;
+import helium314.keyboard.latin.macro.MacroManager;
 import helium314.keyboard.latin.settings.DebugSettings;
 import helium314.keyboard.latin.settings.Defaults;
 import helium314.keyboard.latin.settings.Settings;
@@ -362,6 +364,13 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         // Space/Comma keys: no pressed highlight, no preview — completely invisible interaction
         if (key.getCode() == helium314.keyboard.latin.common.Constants.CODE_SPACE
                 || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
+            return;
+        }
+        // During macro start delay (while user holds space/comma), suppress all visual key feedback.
+        // Once the delay expires and the macro starts typing, suppressVisualFeedback is reset to
+        // false and key animations return to normal.
+        if (MacroManager.INSTANCE.getSuppressVisualFeedback()
+                || DumeMacroManager.INSTANCE.getSuppressVisualFeedback()) {
             return;
         }
         key.onPressed();

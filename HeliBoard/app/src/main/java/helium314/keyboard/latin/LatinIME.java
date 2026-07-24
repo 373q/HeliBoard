@@ -547,15 +547,18 @@ public class LatinIME extends InputMethodService implements
                 // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
                 // after typing a letter — no need to send KeyCode.SHIFT manually.
 
-                // Show key preview if enabled
+                // Show key preview if enabled — must run on UI thread to avoid threading violations
+                // that cause inconsistent haptic feedback when user presses keys during macro.
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
                     if (kb2 != null) {
                         final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.post(() -> {
+                                kv.onKeyPressed(key, true);
+                                kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            });
                         }
                     }
                 }
@@ -678,15 +681,17 @@ public class LatinIME extends InputMethodService implements
                 final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
 
-                // Show key preview / press animation, same as Shift macro
+                // Show key preview / press animation, same as Shift macro — must run on UI thread
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
                     if (kb2 != null) {
                         final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.post(() -> {
+                                kv.onKeyPressed(key, true);
+                                kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            });
                         }
                     }
                 }
