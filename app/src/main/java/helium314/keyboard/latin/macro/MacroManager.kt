@@ -31,6 +31,16 @@ object MacroManager {
     /** Preset de folosit la next start(); null = citește din SharedPreferences normal. */
     var pendingPreset: MacroPreset? = null
 
+    /**
+     * Preset setat în timpul ferestrei start delay (apăsare literă shortcut în timp ce macro
+     * rulează deja start delay-ul). Dacă non-null la expirarea start delay-ului, înlocuiește
+     * selectedPreset pentru toate setările (charDelay, msgDelay, etc.).
+     */
+    @Volatile var latePreset: MacroPreset? = null
+
+    /** True între start() și expirarea start delay-ului — fereastra în care latePreset poate fi setat. */
+    @Volatile var inStartDelayWindow = false
+
     // Thread dedicat, separat de pool-ul Dispatchers.Default (care e shared cu restul app-ului).
     // Ridicam prioritatea threadului ca timing-ul macro-ului sa nu fie afectat de alte task-uri
     // sau de GC pauses cauzate de alte coroutine care ruleaza pe acelasi pool.
@@ -110,6 +120,8 @@ object MacroManager {
         // - un preset rămas accidental în pendingPreset nu poate contamina o pornire ulterioară.
         val selectedPreset = pendingPreset
         pendingPreset = null
+        latePreset = null
+        inStartDelayWindow = true  // fereastra se deschide imediat, înainte de coroutine
 
         val startedShifted = listener?.isShifted() ?: false
 
@@ -159,12 +171,18 @@ object MacroManager {
             }
             cachedMessages = messages
             startDelayDeferred.await()
-            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn, selectedPreset)
+            // Consumă latePreset setat opțional în fereastra start delay (apăsare literă shortcut)
+            val effectivePreset = latePreset ?: selectedPreset
+            latePreset = null
+            inStartDelayWindow = false
+            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn, effectivePreset)
         }
     }
 
     fun stop() {
         isRunning = false
+        inStartDelayWindow = false
+        latePreset = null
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null
@@ -198,29 +216,9 @@ object MacroManager {
         messages.shuffle()
         var index = 0
 
-        // Warmup: sincronizăm connection-ul înainte de prima tastă.
-        // onMacroPrimeConnection() face:
-        //   1. finishInput() — curăță orice cuvânt în compunere și resetează InputLogic
-        //   2. beginBatchEdit/endBatchEdit prin RichInputConnection — refreshă mIC la IC-ul live
-        //   3. tryFixIncorrectCursorPosition() — recalibrează poziția cursorului
-        // După aceasta așteptăm ca IC-ul să fie confirmat live de getCurrentInputText()
-        // care citește DIRECT din IC (nu din cache), garantând că IC-ul e cu adevărat activ.
+        // Sincronizăm connection-ul înainte de prima tastă (fără wait extra — macro pornește
+        // la long-press când IC-ul e deja activ, nu la release când poate fi null/stale).
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        // 250ms în loc de 150ms — unele app-uri (ex: Discord, Instagram) refac IC-ul
-        // la long-press, iar onFinishInput/onStartInput pot veni cu până la 200ms întârziere.
-        // Dăm timp IC-ului nou să fie complet inițializat înainte de warmup check.
-        delay(250)
-
-        // Warmup retry: getCurrentInputText() citește live din IC (nu din cache).
-        // Dacă IC-ul e null sau nu răspunde → returnează null → mai așteptăm.
-        // Timeout 2000ms (față de 1000ms anterior) — robustețe mai mare pentru app-uri lente.
-        var warmupMs = 0
-        while (warmupMs < 2000) {
-            val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
-            if (alive) break
-            delay(50)
-            warmupMs += 50
-        }
 
         while (isRunning) {
             if (!isRunning) return

@@ -43,10 +43,18 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     private var initialSubtype: InputMethodSubtype? = null
     private var subtypeSwitchCount = 0
 
-    // Preset mode: true când userul ține held Space (Shift) sau Comma (Dume) după long-press,
-    // așteptând apăsarea literei shortcut a unui preset.
+    // Preset mode: true când userul ține held Space (Shift) sau Comma (Dume) după long-press.
+    // Macro-ul pornește imediat la long-press; shiftPresetMode/dumePresetMode rămâne true
+    // pe durata hold-ului pentru a intercepta opțional o literă shortcut (în fereastra
+    // start delay) sau pentru a opri macro-ul dacă era deja running la momentul long-press.
     private var shiftPresetMode = false
     private var dumePresetMode = false
+
+    // True dacă macro-ul Shift/Dume era deja running în momentul long-press pe Space/Comma.
+    // La release fără literă shortcut → oprim macro-ul (toggle stop). Altfel nu facem nimic
+    // (macro tocmai a pornit la long-press).
+    private var shiftMacroWasRunning = false
+    private var dumeMacroWasRunning = false
 
     // Codul tastei shortcut consumate în preset mode (setată în onCodeInput, citită în onReleaseKey).
     // Permite suprimarea efectelor vizuale de release pe litera shortcut — altfel onReleaseKey
@@ -79,13 +87,19 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         if (shiftPresetMode && primaryCode == ' '.code) {
             shiftPresetMode = false
             presetModeActive = false
-            helium314.keyboard.latin.macro.MacroManager.toggle(latinIME)
+            // Dacă macro era deja running înainte de long-press → oprim (toggle stop).
+            // Dacă a pornit acum la long-press → nu facem nimic, macro rulează deja.
+            if (shiftMacroWasRunning) {
+                helium314.keyboard.latin.macro.MacroManager.stop()
+            }
             return
         }
         if (dumePresetMode && primaryCode == ','.code) {
             dumePresetMode = false
             presetModeActive = false
-            helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
+            if (dumeMacroWasRunning) {
+                helium314.keyboard.latin.macro.DumeMacroManager.stop()
+            }
             return
         }
         // Suprimă efectele vizuale de release pe tasta shortcut consumată în preset mode.
@@ -140,46 +154,49 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         when (primaryCode) {
             KeyCode.TOGGLE_AUTOCORRECT -> return settings.toggleAutoCorrect()
             KeyCode.TOGGLE_INCOGNITO_MODE -> return settings.toggleAlwaysIncognitoMode()
-            // Long-press Space → intră în preset mode în loc să pornească imediat macro-ul.
-            // Dacă userul apasă o literă shortcut → pornim cu preset; altfel → pornim normal la release.
+            // Long-press Space → pornim macro-ul imediat (sau îl oprim dacă era running).
+            // Fereastra start delay permite opțional apăsarea unei litere shortcut pentru preset.
             KeyCode.MACRO_TOGGLE -> {
+                shiftMacroWasRunning = helium314.keyboard.latin.macro.MacroManager.isRunning()
+                if (!shiftMacroWasRunning) {
+                    helium314.keyboard.latin.macro.MacroManager.start(latinIME)
+                }
                 shiftPresetMode = true
                 presetModeActive = true
                 return
             }
             // Long-press Comma → același comportament pentru Dume.
             KeyCode.DUME_TOGGLE -> {
+                dumeMacroWasRunning = helium314.keyboard.latin.macro.DumeMacroManager.isRunning()
+                if (!dumeMacroWasRunning) {
+                    helium314.keyboard.latin.macro.DumeMacroManager.start(latinIME)
+                }
                 dumePresetMode = true
                 presetModeActive = true
                 return
             }
         }
-        // Dacă suntem în preset mode și userul apasă o literă → căutăm preset-ul
+        // Dacă suntem în preset mode și userul apasă o literă în fereastra start delay →
+        // setăm latePreset pe manager (dacă există un preset pe litera asta).
+        // Dacă fereastra s-a închis deja (start delay expirat) → ignorăm litera silențios.
         if (shiftPresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             shiftPresetMode = false
             presetModeActive = false
-            // Salvăm codul tastei ca să suprimăm efectele vizuale de release în onReleaseKey
             consumedPresetKeyCode = primaryCode
             val preset = helium314.keyboard.latin.macro.PresetManager.findShiftPreset(latinIME, primaryCode.toChar())
-            if (preset != null) {
-                helium314.keyboard.latin.macro.MacroManager.startWithPreset(latinIME, preset)
-            } else {
-                // Niciun preset pe litera asta → pornim normal și lăsăm litera să se scrie
-                helium314.keyboard.latin.macro.MacroManager.toggle(latinIME)
-                // fall through — litera se procesează normal mai jos
+            if (preset != null && helium314.keyboard.latin.macro.MacroManager.inStartDelayWindow) {
+                helium314.keyboard.latin.macro.MacroManager.latePreset = preset
             }
-            return // consumăm tasta (caracterul NU se scrie, indiferent dacă e preset sau nu)
+            // Tasta consumată indiferent — nu se scrie în câmp.
+            return
         }
         if (dumePresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             dumePresetMode = false
             presetModeActive = false
-            // Salvăm codul tastei ca să suprimăm efectele vizuale de release în onReleaseKey
             consumedPresetKeyCode = primaryCode
             val preset = helium314.keyboard.latin.macro.PresetManager.findDumePreset(latinIME, primaryCode.toChar())
-            if (preset != null) {
-                helium314.keyboard.latin.macro.DumeMacroManager.startWithPreset(latinIME, preset)
-            } else {
-                helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
+            if (preset != null && helium314.keyboard.latin.macro.DumeMacroManager.inStartDelayWindow) {
+                helium314.keyboard.latin.macro.DumeMacroManager.latePreset = preset
             }
             return
         }

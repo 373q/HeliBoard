@@ -51,6 +51,12 @@ object DumeMacroManager {
     /** Preset de folosit la next start(); null = citește din SharedPreferences normal. */
     var pendingPreset: MacroPreset? = null
 
+    /** Preset setat opțional în fereastra start delay. Înlocuiește selectedPreset dacă non-null. */
+    @Volatile var latePreset: MacroPreset? = null
+
+    /** True între start() și expirarea start delay-ului. */
+    @Volatile var inStartDelayWindow = false
+
     private val macroExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "DumeTypingThread").apply {
             priority = Thread.MAX_PRIORITY
@@ -93,10 +99,10 @@ object DumeMacroManager {
     fun start(context: Context) {
         if (isRunning) return
         isRunning = true
-        // Capturăm presetul înainte de start delay. Fără shortcut rămân valabile
-        // setările active; cu shortcut, presetul selectat controlează inclusiv delay-ul de start.
         val selectedPreset = pendingPreset
         pendingPreset = null
+        latePreset = null
+        inStartDelayWindow = true  // fereastra se deschide imediat, înainte de coroutine
 
         val startedShifted = listener?.isShifted() ?: false
 
@@ -135,12 +141,17 @@ object DumeMacroManager {
                 return@launch
             }
             startDelayDeferred.await()
-            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn, selectedPreset)
+            val effectivePreset = latePreset ?: selectedPreset
+            latePreset = null
+            inStartDelayWindow = false
+            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn, effectivePreset)
         }
     }
 
     fun stop() {
         isRunning = false
+        inStartDelayWindow = false
+        latePreset = null
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null
@@ -173,23 +184,9 @@ object DumeMacroManager {
         var lineIndexInGroup = 0
         var totalSent = 0
 
-        // Warmup: sincronizăm connection-ul înainte de prima tastă (același fix ca Shift).
-        // onMacroPrimeConnection() face finishInput + ciclu beginBatchEdit/endBatchEdit
-        // prin RichInputConnection (refreshă mIC la IC-ul live) + tryFixIncorrectCursorPosition.
+        // Sincronizăm connection-ul înainte de prima tastă (fără wait extra — macro pornește
+        // la long-press când IC-ul e deja activ, nu la release când poate fi null/stale).
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        // 250ms — unele app-uri refac IC-ul la long-press (onFinishInput/onStartInput),
-        // iar IC-ul nou poate veni cu până la 200ms întârziere. Dăm timp să se stabilizeze.
-        delay(250)
-
-        // getCurrentInputText() citește live din IC (nu din cache) → warmup corect.
-        // Timeout 2000ms pentru robustețe maximă pe app-uri lente.
-        var warmupMs = 0
-        while (warmupMs < 2000) {
-            val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
-            if (alive) break
-            delay(50)
-            warmupMs += 50
-        }
 
         while (isRunning) {
             if (!isRunning) return
