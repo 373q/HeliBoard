@@ -75,6 +75,7 @@ object LegitMode {
         pauseDelay: Long,
         deleteDelay: Long,
         writeDelay: Long,
+        lettersPerTypo: Int = 1,
         isRunning: () -> Boolean,
         typeChar: (Char) -> Unit,
         deleteChar: () -> Unit
@@ -82,18 +83,23 @@ object LegitMode {
         if (!isRunning()) return
 
         val shouldMakeTypo = correctChar.isLetter() && Random.nextFloat() < TYPO_PROBABILITY && budget.tryConsume()
-        val wrongChar = if (shouldMakeTypo) getWrongChar(correctChar) else null
 
-        if (wrongChar != null) {
-            // 1. Tipărește caracterul greșit
-            withContext(Dispatchers.Main) { typeChar(wrongChar) }
-            delay(pauseDelay)
-            if (!isRunning()) return
-            // 2. Șterge cu backspace (apasă vizual tasta de delete, ca un tap real)
-            withContext(Dispatchers.Main) { deleteChar() }
-            delay(deleteDelay)
-            if (!isRunning()) return
-            // 3. Tipărește caracterul corect, apoi bucla apelantă revine la charDelay normal
+        if (shouldMakeTypo) {
+            val count = lettersPerTypo.coerceAtLeast(1)
+            // 1. Tipărește `count` litere greșite adiacente
+            repeat(count) {
+                val wrongChar = getWrongChar(correctChar) ?: return@repeat
+                withContext(Dispatchers.Main) { typeChar(wrongChar) }
+                delay(pauseDelay)
+                if (!isRunning()) return
+            }
+            // 2. Șterge toate literele greșite cu backspace
+            repeat(count) {
+                withContext(Dispatchers.Main) { deleteChar() }
+                delay(deleteDelay)
+                if (!isRunning()) return
+            }
+            // 3. Tipărește caracterul corect
             withContext(Dispatchers.Main) { typeChar(correctChar) }
             delay(writeDelay)
             return

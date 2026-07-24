@@ -147,6 +147,7 @@ object DumeMacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
+        val legitLettersPerTypo = prefs.getInt(Settings.PREF_DUME_LEGIT_LETTERS_PER_TYPO, 1)
         val randomPauseEnabled = prefs.getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)
         val randomPauseMaxMs = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS, Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS).toLong()
         val randomPauseCount = prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_COUNT, Defaults.PREF_DUME_RANDOM_PAUSE_COUNT)
@@ -222,6 +223,7 @@ object DumeMacroManager {
                         pauseDelay = legitPauseActions,
                         deleteDelay = legitDeleteDelay,
                         writeDelay = legitWriteDelay,
+                        lettersPerTypo = legitLettersPerTypo,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }

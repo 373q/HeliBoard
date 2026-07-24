@@ -157,6 +157,14 @@ private fun ShiftMacroTab() {
                 range = 1f..10f,
                 stepSize = 1,
             )
+            SliderPreference(
+                name = "Legit Mode — litere greșite per typo",
+                key = Settings.PREF_LEGIT_LETTERS_PER_TYPO,
+                description = { v: Int -> if (v == 1) "1 literă" else "$v litere" },
+                default = Defaults.PREF_LEGIT_LETTERS_PER_TYPO,
+                range = 1f..10f,
+                stepSize = 1,
+            )
             Preference(
                 name = if (isRunning) "Stop Macro (Shift)" else "Start Macro (Shift)",
                 description = if (isRunning) "Running" else "Stopped",
@@ -292,6 +300,14 @@ private fun DumeMacroTab() {
                 key = Settings.PREF_DUME_LEGIT_TYPOS,
                 description = { v: Int -> "$v typos" },
                 default = Defaults.PREF_DUME_LEGIT_TYPOS,
+                range = 1f..10f,
+                stepSize = 1,
+            )
+            SliderPreference(
+                name = "Legit Mode — litere greșite per typo",
+                key = Settings.PREF_DUME_LEGIT_LETTERS_PER_TYPO,
+                description = { v: Int -> if (v == 1) "1 literă" else "$v litere" },
+                default = Defaults.PREF_DUME_LEGIT_LETTERS_PER_TYPO,
                 range = 1f..10f,
                 stepSize = 1,
             )

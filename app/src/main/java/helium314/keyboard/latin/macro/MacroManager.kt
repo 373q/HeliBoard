@@ -156,6 +156,7 @@ object MacroManager {
         val legitPauseActions = prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
         val legitWriteDelay = prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
+        val legitLettersPerTypo = prefs.getInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, 1)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
@@ -232,6 +233,7 @@ object MacroManager {
                         pauseDelay = legitPauseActions,
                         deleteDelay = legitDeleteDelay,
                         writeDelay = legitWriteDelay,
+                        lettersPerTypo = legitLettersPerTypo,
                         isRunning = { isRunning },
                         typeChar = { c -> listener?.onMacroTypeChar(c) },
                         deleteChar = { listener?.onMacroDeleteChar() }
