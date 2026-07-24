@@ -744,7 +744,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             startRepeatKey(key);
             startLongPressTimer(key);
             // Suprimăm highlight-ul vizual pe literele shortcut când suntem în preset mode
-            if (!KeyboardActionListenerImpl.presetModeActive || !Character.isLetter(key.getCode())) {
+            if (!KeyboardActionListenerImpl.presetModeActive) {
                 setPressedKeyGraphics(key, eventTime);
             }
             mStartX = x;
@@ -857,7 +857,7 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             return;
         }
         startLongPressTimer(key);
-        if (!KeyboardActionListenerImpl.presetModeActive || !Character.isLetter(key.getCode())) {
+        if (!KeyboardActionListenerImpl.presetModeActive) {
             setPressedKeyGraphics(key, eventTime);
         }
     }

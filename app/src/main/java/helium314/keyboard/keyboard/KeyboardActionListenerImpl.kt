@@ -65,7 +65,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     override fun onPressKey(primaryCode: Int, repeatCount: Int, isSinglePointer: Boolean, hapticEvent: HapticEvent) {
         // În preset mode: suprimă orice efect vizual/haptic pe tasta apăsată —
         // nu vrem să apară animație de press pe litera shortcut.
-        if ((shiftPresetMode || dumePresetMode) && primaryCode > 0 && primaryCode.toChar().isLetter()) {
+        if (shiftPresetMode || dumePresetMode) {
             return
         }
         metaOnPressKey(primaryCode)
