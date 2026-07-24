@@ -187,18 +187,23 @@ object MacroManager {
         var index = 0
 
         // Warmup: sincronizăm connection-ul înainte de prima tastă.
-        // Imediat după long-press + keyboard switch (onMacroCapsState), InputLogic poate
-        // avea cursorul out-of-sync → prima scriere e silently dropped.
-        // finishInput() + tryFixIncorrectCursorPosition() + requestCursorUpdates() rezolvă asta.
-        // 150ms în loc de 80ms — Space-ul de la long-press poate fi încă ținut apăsat când
-        // macro-ul pornește și are nevoie de timp să se reseteze complet înainte de prima tastă.
+        // onMacroPrimeConnection() face:
+        //   1. finishInput() — curăță orice cuvânt în compunere și resetează InputLogic
+        //   2. beginBatchEdit/endBatchEdit prin RichInputConnection — refreshă mIC la IC-ul live
+        //   3. tryFixIncorrectCursorPosition() — recalibrează poziția cursorului
+        // După aceasta așteptăm ca IC-ul să fie confirmat live de getCurrentInputText()
+        // care citește DIRECT din IC (nu din cache), garantând că IC-ul e cu adevărat activ.
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        delay(150)
+        // 250ms în loc de 150ms — unele app-uri (ex: Discord, Instagram) refac IC-ul
+        // la long-press, iar onFinishInput/onStartInput pot veni cu până la 200ms întârziere.
+        // Dăm timp IC-ului nou să fie complet inițializat înainte de warmup check.
+        delay(250)
 
-        // Warmup retry: dacă connection-ul era stale (null) chiar la pornire, așteptăm
-        // să devină activ (max 1s) în loc să oprim definitiv la primul null.
+        // Warmup retry: getCurrentInputText() citește live din IC (nu din cache).
+        // Dacă IC-ul e null sau nu răspunde → returnează null → mai așteptăm.
+        // Timeout 2000ms (față de 1000ms anterior) — robustețe mai mare pentru app-uri lente.
         var warmupMs = 0
-        while (warmupMs < 1000) {
+        while (warmupMs < 2000) {
             val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
             if (alive) break
             delay(50)

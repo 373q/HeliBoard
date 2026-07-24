@@ -169,13 +169,17 @@ object DumeMacroManager {
         var totalSent = 0
 
         // Warmup: sincronizăm connection-ul înainte de prima tastă (același fix ca Shift).
-        // 150ms în loc de 80ms — Comma-ul de la long-press poate fi încă ținut apăsat când
-        // macro-ul pornește și are nevoie de timp să se reseteze complet înainte de prima tastă.
+        // onMacroPrimeConnection() face finishInput + ciclu beginBatchEdit/endBatchEdit
+        // prin RichInputConnection (refreshă mIC la IC-ul live) + tryFixIncorrectCursorPosition.
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
-        delay(150)
+        // 250ms — unele app-uri refac IC-ul la long-press (onFinishInput/onStartInput),
+        // iar IC-ul nou poate veni cu până la 200ms întârziere. Dăm timp să se stabilizeze.
+        delay(250)
 
+        // getCurrentInputText() citește live din IC (nu din cache) → warmup corect.
+        // Timeout 2000ms pentru robustețe maximă pe app-uri lente.
         var warmupMs = 0
-        while (warmupMs < 1000) {
+        while (warmupMs < 2000) {
             val alive = withContext(Dispatchers.Main) { listener?.getCurrentInputText() != null }
             if (alive) break
             delay(50)

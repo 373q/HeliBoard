@@ -618,7 +618,14 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public String getCurrentInputText() {
-                final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
+                // NU folosim cache-ul RichInputConnection (mCommittedTextBeforeComposingText
+                // + mComposingText) — el poate returna non-null chiar și când IC-ul real e
+                // null sau stale, dând un fals "disponibil" care face macro-ul să înceapă să
+                // scrie pe un IC mort. Citim direct din IC-ul live: dacă IC-ul e null sau nu
+                // răspunde, returnăm null → warmup-ul mai așteaptă.
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return null;
+                final CharSequence text = ic.getTextBeforeCursor(
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
                 return text != null ? text.toString() : null;
             }
@@ -652,12 +659,23 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroPrimeConnection() {
-                // Curăță orice stare reziduală InputLogic înainte de prima tastă macro.
-                // finishInput() + resetCaches asigură că IC-ul e curat și că prima commitText
-                // directă nu e bufferizată în vreun batch edit deschis de long-press.
+                // 1. Finalizează orice cuvânt în compunere și resetează starea InputLogic.
                 mInputLogic.finishInput();
+                // 2. Ciclu dummy beginBatchEdit/endBatchEdit prin RichInputConnection.
+                //    RichInputConnection.beginBatchEdit() face mIC = getCurrentInputConnection()
+                //    când mNestLevel trece de la 0→1 — aceasta este singura cale prin care mIC
+                //    e refreshat la IC-ul live curent. Fără acest ciclu, mIC poate rămâne pe
+                //    un IC vechi (de la ultimul onCodeInput normal) și getCurrentInputConnection()
+                //    poate returna null dacă IC-ul a fost recreat între timp (ex: unele app-uri
+                //    refac IC-ul la long-press). Ciclul face și mIC.beginBatchEdit/endBatchEdit,
+                //    sincronizând batch-depth-ul real al IC-ului cu starea așteptată.
+                mInputLogic.mConnection.beginBatchEdit();
+                mInputLogic.mConnection.endBatchEdit();
+                // 3. Recalibrează poziția cursorului pe baza IC-ului tocmai refreshat.
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
-                mInputLogic.mConnection.requestCursorUpdates(true, true);
+                // Notă: requestCursorUpdates(true, true) a fost eliminat — callback-ul imediat
+                // era async și putea interfera cu primul commitText al macro-ului dacă sosi
+                // între primeConnection și prima tastă.
             }
         });
 
@@ -738,7 +756,12 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public String getCurrentInputText() {
-                final CharSequence text = mInputLogic.mConnection.getTextBeforeCursor(
+                // Bypass cache RichInputConnection — citim direct din IC-ul live.
+                // Același motiv ca listener-ul Shift: cache-ul poate returna non-null
+                // chiar când IC-ul real e null/stale, provocând un warmup fals-pozitiv.
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return null;
+                final CharSequence text = ic.getTextBeforeCursor(
                         helium314.keyboard.latin.common.Constants.EDITOR_CONTENTS_CACHE_SIZE, 0);
                 return text != null ? text.toString() : null;
             }
@@ -771,10 +794,12 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroPrimeConnection() {
-                // Curăță orice stare reziduală InputLogic înainte de prima tastă macro Dume.
+                // Identic cu Shift: finishInput + ciclu beginBatchEdit/endBatchEdit prin
+                // RichInputConnection pentru a refresha mIC la IC-ul live curent.
                 mInputLogic.finishInput();
+                mInputLogic.mConnection.beginBatchEdit();
+                mInputLogic.mConnection.endBatchEdit();
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
-                mInputLogic.mConnection.requestCursorUpdates(true, true);
             }
         });
     }
