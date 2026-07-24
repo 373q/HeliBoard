@@ -98,6 +98,7 @@ private fun ShiftMacroTab() {
     var messageCount by remember { mutableIntStateOf(MacroManager.getMessageCount(ctx)) }
     var isRunning by remember { mutableStateOf(MacroManager.isRunning()) }
     var presets by remember { mutableStateOf(PresetManager.loadShiftPresets(ctx)) }
+    var shiftRandomPauseEnabled by remember { mutableStateOf(ctx.prefs().getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)) }
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -197,24 +198,29 @@ private fun ShiftMacroTab() {
                 name = "Random Pause",
                 key = Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED,
                 default = Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED,
-                description = "Adaugă pauze aleatorii între mesaje, ca un om care se distrage",
+                description = "Pauze aleatorii în timp ce scrie, ca un om care se oprește",
+                onCheckedChange = { shiftRandomPauseEnabled = it },
             )
-            SliderPreference(
-                name = "Random Pause — durată maximă (ms)",
-                key = Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
-                description = { v: Int -> "${v}ms" },
-                default = Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
-                range = 100f..3000f,
-                stepSize = 100,
-            )
-            SliderPreference(
-                name = "Random Pause — câte pauze în timp ce scrie",
-                key = Settings.PREF_MACRO_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
-                default = Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT,
-                range = 1f..10f,
-                stepSize = 1,
-            )
+            AnimatedVisibility(visible = shiftRandomPauseEnabled) {
+                Column {
+                    SliderPreference(
+                        name = "Random Pause — durată maximă (ms)",
+                        key = Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
+                        description = { v: Int -> "${v}ms" },
+                        default = Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
+                        range = 100f..3000f,
+                        stepSize = 100,
+                    )
+                    SliderPreference(
+                        name = "Random Pause — câte pauze în timp ce scrie",
+                        key = Settings.PREF_MACRO_RANDOM_PAUSE_COUNT,
+                        description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
+                        default = Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT,
+                        range = 1f..10f,
+                        stepSize = 1,
+                    )
+                }
+            }
 
             // ── Presets ───────────────────────────────────────────────────
             PresetSection(
@@ -285,6 +291,7 @@ private fun DumeMacroTab() {
     var messageCount by remember { mutableIntStateOf(DumeMacroManager.getMessageCount(ctx)) }
     var isRunning by remember { mutableStateOf(DumeMacroManager.isRunning()) }
     var presets by remember { mutableStateOf(PresetManager.loadDumePresets(ctx)) }
+    var dumeRandomPauseEnabled by remember { mutableStateOf(ctx.prefs().getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)) }
 
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -346,24 +353,29 @@ private fun DumeMacroTab() {
                 name = "Random Pause",
                 key = Settings.PREF_DUME_RANDOM_PAUSE_ENABLED,
                 default = Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED,
-                description = "Inserează pauze aleatorii în secvența de mesaje",
+                description = "Pauze aleatorii în timp ce scrie, ca un om care se oprește",
+                onCheckedChange = { dumeRandomPauseEnabled = it },
             )
-            SliderPreference(
-                name = "Random Pause — durată maximă (ms)",
-                key = Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS,
-                description = { v: Int -> "${v}ms" },
-                default = Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS,
-                range = 100f..3000f,
-                stepSize = 100,
-            )
-            SliderPreference(
-                name = "Random Pause — câte pauze în timp ce scrie",
-                key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
-                default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
-                range = 1f..10f,
-                stepSize = 1,
-            )
+            AnimatedVisibility(visible = dumeRandomPauseEnabled) {
+                Column {
+                    SliderPreference(
+                        name = "Random Pause — durată maximă (ms)",
+                        key = Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS,
+                        description = { v: Int -> "${v}ms" },
+                        default = Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS,
+                        range = 100f..3000f,
+                        stepSize = 100,
+                    )
+                    SliderPreference(
+                        name = "Random Pause — câte pauze în timp ce scrie",
+                        key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
+                        description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
+                        default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
+                        range = 1f..10f,
+                        stepSize = 1,
+                    )
+                }
+            }
             SwitchPreference(
                 name = "Legit Mode",
                 key = Settings.PREF_DUME_LEGIT_MODE,
