@@ -208,9 +208,9 @@ private fun ShiftMacroTab() {
                 stepSize = 100,
             )
             SliderPreference(
-                name = "Random Pause — frecvență (pauze / 10 mesaje)",
+                name = "Random Pause — pauze per mesaj",
                 key = Settings.PREF_MACRO_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> "$v / 10 msg" },
+                description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
                 default = Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT,
                 range = 1f..10f,
                 stepSize = 1,
@@ -357,7 +357,7 @@ private fun DumeMacroTab() {
                 stepSize = 100,
             )
             SliderPreference(
-                name = "Random Pause — number of pauses (per 10 msg)",
+                name = "Random Pause — pauze per mesaj",
                 key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
                 description = { v: Int -> "$v pauses" },
                 default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
@@ -602,7 +602,7 @@ private fun PresetItem(
                     PresetSettingRow("Litere greșite / typo", "${preset.lettersPerTypo}")
                 }
                 if (preset.randomPauseEnabled) {
-                    PresetSettingRow("Random Pause", "ON — max ${preset.randomPauseMaxMs}ms, ${preset.randomPauseCount}x/10msg")
+                    PresetSettingRow("Random Pause", "ON — max ${preset.randomPauseMaxMs}ms, ${preset.randomPauseCount}x/msg")
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
