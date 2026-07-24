@@ -539,15 +539,20 @@ public class LatinIME extends InputMethodService implements
         MacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                // MacroManager already decides the correct case via isCapsLocked().
-                // Do NOT apply shift here — doing so would double-uppercase or
-                // override the lowercase when the user manually turns off caps.
-                final int codeToSend = (int) c;
-                onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
-                // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
-                // after typing a letter — no need to send KeyCode.SHIFT manually.
+                // BYPASS InputLogic complet — injectăm direct în InputConnection.
+                // Cauza reală a bug-ului "prima literă dispare": InputLogic rămâne cu stare
+                // reziduală din long-press Space (batch edit deschis, composing word, SpaceState
+                // neresolvat) → commitText-ul primei taste intră în acel batch pending și
+                // e bufferizat până când userul apasă manual o tastă care îl flushează.
+                // Soluție: ocolim complet InputLogic și scriem direct în IC.
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                ic.beginBatchEdit();
+                ic.commitText(String.valueOf(c), 1);
+                ic.endBatchEdit();
 
-                // Show key preview if enabled
+                // Animație vizuală pe tastă (aceeași ca înainte)
+                final int codeToSend = (int) c;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
@@ -619,13 +624,16 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroDeleteChar() {
-                // Must send the real KeyCode.DELETE, not a '\b' char via onMacroTypeChar —
-                // onCodeInput() doesn't treat code point 8 as a backspace, so Legit Mode's
-                // typo-then-correct step silently failed to erase the wrong character before.
-                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
-                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Bypass InputLogic — direct deleteSurroundingText pe IC.
+                // Același motiv ca onMacroTypeChar: ocolim starea reziduală din long-press.
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                ic.beginBatchEdit();
+                ic.deleteSurroundingText(1, 0);
+                ic.endBatchEdit();
 
-                // Show the delete key being pressed, same as a real tap
+                // Animație vizuală pe tasta delete
+                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
@@ -644,11 +652,9 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroPrimeConnection() {
-                // Sincronizează starea internă a InputLogic cu app-ul înainte de prima tastă.
-                // Rezolvă bug-ul: după long-press + setAlphabetShiftLockedKeyboard(), cursorul
-                // InputLogic poate fi out-of-sync → commitText() e silently dropped.
-                // finishInput() șterge orice composing word activ (ramas din long-press Space)
-                // — fără asta, prima tastă merge în buffer-ul de composing și e silently dropped.
+                // Curăță orice stare reziduală InputLogic înainte de prima tastă macro.
+                // finishInput() + resetCaches asigură că IC-ul e curat și că prima commitText
+                // directă nu e bufferizată în vreun batch edit deschis de long-press.
                 mInputLogic.finishInput();
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
                 mInputLogic.mConnection.requestCursorUpdates(true, true);
@@ -659,10 +665,15 @@ public class LatinIME extends InputMethodService implements
         DumeMacroManager.INSTANCE.setListener(new MacroManager.MacroListener() {
             @Override
             public void onMacroTypeChar(char c) {
-                final int codeToSend = (int) c;
-                onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Bypass InputLogic complet — injectăm direct în InputConnection (același fix ca Shift).
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                ic.beginBatchEdit();
+                ic.commitText(String.valueOf(c), 1);
+                ic.endBatchEdit();
 
-                // Show key preview / press animation, same as Shift macro
+                // Animație vizuală pe tastă
+                final int codeToSend = (int) c;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
@@ -733,10 +744,15 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroDeleteChar() {
-                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
-                onCodeInput(deleteCode, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
+                // Bypass InputLogic — direct deleteSurroundingText (același fix ca Shift).
+                final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
+                if (ic == null) return;
+                ic.beginBatchEdit();
+                ic.deleteSurroundingText(1, 0);
+                ic.endBatchEdit();
 
-                // Show the delete key being pressed, same as a real tap
+                // Animație vizuală pe tasta delete
+                final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
@@ -755,8 +771,7 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroPrimeConnection() {
-                // La fel ca Shift: finishInput() curăță composing word-ul rămas din long-press
-                // Comma înainte de prima tastă, altfel prima literă e silently dropped.
+                // Curăță orice stare reziduală InputLogic înainte de prima tastă macro Dume.
                 mInputLogic.finishInput();
                 mInputLogic.mConnection.tryFixIncorrectCursorPosition();
                 mInputLogic.mConnection.requestCursorUpdates(true, true);
