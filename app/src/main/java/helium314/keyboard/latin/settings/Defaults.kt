@@ -215,5 +215,8 @@ object Defaults {
     const val PREF_DUME_RANDOM_PAUSE_ENABLED = false
     const val PREF_DUME_RANDOM_PAUSE_MAX_MS = 1500
     const val PREF_DUME_RANDOM_PAUSE_COUNT = 3
+    const val PREF_MACRO_RANDOM_PAUSE_ENABLED = false
+    const val PREF_MACRO_RANDOM_PAUSE_MAX_MS = 1500
+    const val PREF_MACRO_RANDOM_PAUSE_COUNT = 3
 }
 

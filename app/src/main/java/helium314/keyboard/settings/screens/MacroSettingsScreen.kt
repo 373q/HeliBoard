@@ -193,6 +193,28 @@ private fun ShiftMacroTab() {
                 range = 1f..10f,
                 stepSize = 1,
             )
+            SwitchPreference(
+                name = "Random Pause",
+                key = Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED,
+                default = Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED,
+                description = "Adaugă pauze aleatorii între mesaje, ca un om care se distrage",
+            )
+            SliderPreference(
+                name = "Random Pause — durată maximă (ms)",
+                key = Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
+                description = { v: Int -> "${v}ms" },
+                default = Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
+                range = 100f..30000f,
+                stepSize = 100,
+            )
+            SliderPreference(
+                name = "Random Pause — frecvență (pauze / 10 mesaje)",
+                key = Settings.PREF_MACRO_RANDOM_PAUSE_COUNT,
+                description = { v: Int -> "$v / 10 msg" },
+                default = Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT,
+                range = 1f..10f,
+                stepSize = 1,
+            )
 
             // ── Presets ───────────────────────────────────────────────────
             PresetSection(
@@ -212,6 +234,9 @@ private fun ShiftMacroTab() {
                         writeDelay = prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, Defaults.PREF_LEGIT_WRITE_DELAY),
                         maxTypos = prefs.getInt(Settings.PREF_LEGIT_TYPOS, Defaults.PREF_LEGIT_TYPOS),
                         lettersPerTypo = prefs.getInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, Defaults.PREF_LEGIT_LETTERS_PER_TYPO),
+                        randomPauseEnabled = prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED),
+                        randomPauseMaxMs = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS),
+                        randomPauseCount = prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT),
                     )
                     PresetManager.saveShiftPreset(ctx, preset)
                     presets = PresetManager.loadShiftPresets(ctx)
@@ -231,6 +256,9 @@ private fun ShiftMacroTab() {
                         .putInt(Settings.PREF_LEGIT_WRITE_DELAY, preset.writeDelay)
                         .putInt(Settings.PREF_LEGIT_TYPOS, preset.maxTypos)
                         .putInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, preset.lettersPerTypo)
+                        .putBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, preset.randomPauseEnabled)
+                        .putInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, preset.randomPauseMaxMs)
+                        .putInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, preset.randomPauseCount)
                         .apply()
                 },
             )

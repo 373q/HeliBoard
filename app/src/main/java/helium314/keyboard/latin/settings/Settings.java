@@ -232,6 +232,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_DUME_RANDOM_PAUSE_ENABLED = "dume_random_pause_enabled";
     public static final String PREF_DUME_RANDOM_PAUSE_MAX_MS = "dume_random_pause_max_ms";
     public static final String PREF_DUME_RANDOM_PAUSE_COUNT = "dume_random_pause_count";
+    public static final String PREF_MACRO_RANDOM_PAUSE_ENABLED = "macro_random_pause_enabled";
+    public static final String PREF_MACRO_RANDOM_PAUSE_MAX_MS = "macro_random_pause_max_ms";
+    public static final String PREF_MACRO_RANDOM_PAUSE_COUNT = "macro_random_pause_count";
 
     private Context mContext;
     private SharedPreferences mPrefs;

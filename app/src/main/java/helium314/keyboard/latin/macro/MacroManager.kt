@@ -3,6 +3,7 @@ package helium314.keyboard.latin.macro
 
 import android.content.Context
 import android.net.Uri
+import helium314.keyboard.latin.settings.Defaults
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.prefs
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.random.Random
 
 object MacroManager {
 
@@ -176,6 +178,9 @@ object MacroManager {
         val legitWriteDelay = (p?.writeDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
         val legitTypos = p?.maxTypos ?: prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
         val legitLettersPerTypo = p?.lettersPerTypo ?: prefs.getInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, 1)
+        val randomPauseEnabled = p?.randomPauseEnabled ?: prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)
+        val randomPauseMaxMs = (p?.randomPauseMaxMs?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS).toLong()
+        val randomPauseCount = p?.randomPauseCount ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
@@ -330,6 +335,16 @@ object MacroManager {
 
             if (!isRunning) return
             delay(msgDelay)
+
+            // Random pause — inserat după delay-ul normal dintre mesaje
+            if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0) {
+                val pauseChance = randomPauseCount.toFloat() / 10f
+                if (Random.nextFloat() < pauseChance) {
+                    val pauseMs = Random.nextLong(0L, randomPauseMaxMs + 1L)
+                    if (!isRunning) return
+                    delay(pauseMs)
+                }
+            }
         }
     }
 
