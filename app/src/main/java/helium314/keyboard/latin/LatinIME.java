@@ -547,9 +547,10 @@ public class LatinIME extends InputMethodService implements
                 // Soluție: ocolim complet InputLogic și scriem direct în IC.
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
-                ic.beginBatchEdit();
+                // Macro-ul este deja sincronizat cu IC-ul live la pornire. Nu deschidem și
+                // închidem un BatchEdit pentru fiecare caracter: acele două apeluri IPC la
+                // fiecare literă produc lag în aplicația țintă, fără să schimbe textul rezultat.
                 ic.commitText(String.valueOf(c), 1);
-                ic.endBatchEdit();
 
                 // Animație vizuală pe tastă (aceeași ca înainte)
                 final int codeToSend = (int) c;
@@ -635,9 +636,7 @@ public class LatinIME extends InputMethodService implements
                 // Același motiv ca onMacroTypeChar: ocolim starea reziduală din long-press.
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
-                ic.beginBatchEdit();
                 ic.deleteSurroundingText(1, 0);
-                ic.endBatchEdit();
 
                 // Animație vizuală pe tasta delete
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
@@ -686,9 +685,7 @@ public class LatinIME extends InputMethodService implements
                 // Bypass InputLogic complet — injectăm direct în InputConnection (același fix ca Shift).
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
-                ic.beginBatchEdit();
                 ic.commitText(String.valueOf(c), 1);
-                ic.endBatchEdit();
 
                 // Animație vizuală pe tastă
                 final int codeToSend = (int) c;
@@ -770,9 +767,7 @@ public class LatinIME extends InputMethodService implements
                 // Bypass InputLogic — direct deleteSurroundingText (același fix ca Shift).
                 final android.view.inputmethod.InputConnection ic = getCurrentInputConnection();
                 if (ic == null) return;
-                ic.beginBatchEdit();
                 ic.deleteSurroundingText(1, 0);
-                ic.endBatchEdit();
 
                 // Animație vizuală pe tasta delete
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;

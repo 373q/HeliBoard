@@ -45,6 +45,7 @@ object DumeMacroManager {
     const val DUME_FILE_NAME = "dume_messages.txt"
 
     private var typingJob: Job? = null
+    @Volatile
     private var isRunning = false
 
     /** Preset de folosit la next start(); null = citește din SharedPreferences normal. */
@@ -92,6 +93,10 @@ object DumeMacroManager {
     fun start(context: Context) {
         if (isRunning) return
         isRunning = true
+        // Capturăm presetul înainte de start delay. Fără shortcut rămân valabile
+        // setările active; cu shortcut, presetul selectat controlează inclusiv delay-ul de start.
+        val selectedPreset = pendingPreset
+        pendingPreset = null
 
         val startedShifted = listener?.isShifted() ?: false
 
@@ -118,7 +123,8 @@ object DumeMacroManager {
         listener?.onMacroStart(inputPrefix != null && toolbarWasOn)
 
         typingJob = scope.launch {
-            val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
+            val startDelay = (selectedPreset?.startDelay
+                ?: context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800)).toLong()
             val startDelayDeferred = async { delay(startDelay) }
 
             val groups = withContext(Dispatchers.IO) { loadGroupsCached(context) }
@@ -129,7 +135,7 @@ object DumeMacroManager {
                 return@launch
             }
             startDelayDeferred.await()
-            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn)
+            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn, selectedPreset)
         }
     }
 
@@ -145,22 +151,21 @@ object DumeMacroManager {
         context: Context,
         groups: MutableList<List<String>>,
         capsOn: Boolean,
-        toolbarWasOn: Boolean
+        toolbarWasOn: Boolean,
+        preset: MacroPreset?
     ) {
         val prefs = context.prefs()
-        val p = pendingPreset
-        pendingPreset = null
-        val charDelay = (p?.charDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_CHAR_DELAY, 80).toLong()
-        val msgDelay = (p?.msgDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_MSG_DELAY, 3000).toLong()
-        val legitMode = p?.legitMode ?: prefs.getBoolean(Settings.PREF_DUME_LEGIT_MODE, false)
-        val legitDeleteDelay = (p?.deleteDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_DELETE_DELAY, 120).toLong()
-        val legitPauseActions = (p?.pauseDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
-        val legitWriteDelay = (p?.writeDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
-        val legitTypos = p?.maxTypos ?: prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
-        val legitLettersPerTypo = p?.lettersPerTypo ?: prefs.getInt(Settings.PREF_DUME_LEGIT_LETTERS_PER_TYPO, 1)
-        val randomPauseEnabled = p?.randomPauseEnabled ?: prefs.getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)
-        val randomPauseMaxMs = (p?.randomPauseMaxMs?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS, Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS).toLong()
-        val randomPauseCount = p?.randomPauseCount ?: prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_COUNT, Defaults.PREF_DUME_RANDOM_PAUSE_COUNT)
+        val charDelay = (preset?.charDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_CHAR_DELAY, 80).toLong()
+        val msgDelay = (preset?.msgDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_MSG_DELAY, 3000).toLong()
+        val legitMode = preset?.legitMode ?: prefs.getBoolean(Settings.PREF_DUME_LEGIT_MODE, false)
+        val legitDeleteDelay = (preset?.deleteDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_DELETE_DELAY, 120).toLong()
+        val legitPauseActions = (preset?.pauseDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_PAUSE_ACTIONS, 40).toLong()
+        val legitWriteDelay = (preset?.writeDelay?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_LEGIT_WRITE_DELAY, 100).toLong()
+        val legitTypos = preset?.maxTypos ?: prefs.getInt(Settings.PREF_DUME_LEGIT_TYPOS, 2)
+        val legitLettersPerTypo = preset?.lettersPerTypo ?: prefs.getInt(Settings.PREF_DUME_LEGIT_LETTERS_PER_TYPO, 1)
+        val randomPauseEnabled = preset?.randomPauseEnabled ?: prefs.getBoolean(Settings.PREF_DUME_RANDOM_PAUSE_ENABLED, Defaults.PREF_DUME_RANDOM_PAUSE_ENABLED)
+        val randomPauseMaxMs = (preset?.randomPauseMaxMs?.toLong()) ?: prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS, Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS).toLong()
+        val randomPauseCount = preset?.randomPauseCount ?: prefs.getInt(Settings.PREF_DUME_RANDOM_PAUSE_COUNT, Defaults.PREF_DUME_RANDOM_PAUSE_COUNT)
 
         // Shuffle grupurile
         groups.shuffle()

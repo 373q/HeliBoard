@@ -25,6 +25,7 @@ object MacroManager {
     const val MACRO_FILE_NAME = "macro_messages.txt"
 
     private var typingJob: Job? = null
+    @Volatile
     private var isRunning = false
 
     /** Preset de folosit la next start(); null = citește din SharedPreferences normal. */
@@ -103,6 +104,12 @@ object MacroManager {
     fun start(context: Context) {
         if (isRunning) return
         isRunning = true
+        // Rezolvăm presetul în momentul pornirii, nu după start delay. Astfel:
+        // - fără shortcut, macro-ul folosește setările active acum;
+        // - cu shortcut, toate setările presetului (inclusiv start delay) se aplică de la început;
+        // - un preset rămas accidental în pendingPreset nu poate contamina o pornire ulterioară.
+        val selectedPreset = pendingPreset
+        pendingPreset = null
 
         val startedShifted = listener?.isShifted() ?: false
 
@@ -137,7 +144,8 @@ object MacroManager {
         typingJob = scope.launch {
             // Pornim delay-ul de start in paralel cu incarcarea fisierului — daca userul a pus
             // 0ms, nu vrem ca parse-ul unui fisier de 15MB+ sa adauge un delay "ascuns" la start.
-            val startDelay = context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
+            val startDelay = (selectedPreset?.startDelay
+                ?: context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800)).toLong()
             val startDelayDeferred = async { delay(startDelay) }
             // Foloseste cache-ul persistent daca exista si fisierul nu s-a schimbat — evita
             // re-citirea + re-parse-ul de pe disc la fiecare start (asta e sursa reala a
@@ -151,7 +159,7 @@ object MacroManager {
             }
             cachedMessages = messages
             startDelayDeferred.await()
-            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn)
+            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn, selectedPreset)
         }
     }
 
@@ -165,22 +173,26 @@ object MacroManager {
         cachedMessages = emptyList()
     }
 
-    private suspend fun runMacro(context: Context, messages: MutableList<String>, capsOn: Boolean, toolbarWasOn: Boolean) {
+    private suspend fun runMacro(
+        context: Context,
+        messages: MutableList<String>,
+        capsOn: Boolean,
+        toolbarWasOn: Boolean,
+        preset: MacroPreset?
+    ) {
         val prefs = context.prefs()
         // Citim delay-urile o data la start — daca userul le schimba in timp ce ruleaza, se aplica la urmatoarea pornire
-        val p = pendingPreset
-        pendingPreset = null
-        val charDelay = (p?.charDelay?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
-        val msgDelay = (p?.msgDelay?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
-        val legitMode = p?.legitMode ?: prefs.getBoolean(Settings.PREF_SHIFT_LEGIT_MODE, false)
-        val legitDeleteDelay = (p?.deleteDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_DELETE_DELAY, 120).toLong()
-        val legitPauseActions = (p?.pauseDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
-        val legitWriteDelay = (p?.writeDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
-        val legitTypos = p?.maxTypos ?: prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
-        val legitLettersPerTypo = p?.lettersPerTypo ?: prefs.getInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, 1)
-        val randomPauseEnabled = p?.randomPauseEnabled ?: prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)
-        val randomPauseMaxMs = (p?.randomPauseMaxMs?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS).toLong()
-        val randomPauseCount = p?.randomPauseCount ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT)
+        val charDelay = (preset?.charDelay?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_CHAR_DELAY, 80).toLong()
+        val msgDelay = (preset?.msgDelay?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_MSG_DELAY, 3000).toLong()
+        val legitMode = preset?.legitMode ?: prefs.getBoolean(Settings.PREF_SHIFT_LEGIT_MODE, false)
+        val legitDeleteDelay = (preset?.deleteDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_DELETE_DELAY, 120).toLong()
+        val legitPauseActions = (preset?.pauseDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_PAUSE_ACTIONS, 40).toLong()
+        val legitWriteDelay = (preset?.writeDelay?.toLong()) ?: prefs.getInt(Settings.PREF_LEGIT_WRITE_DELAY, 100).toLong()
+        val legitTypos = preset?.maxTypos ?: prefs.getInt(Settings.PREF_LEGIT_TYPOS, 2)
+        val legitLettersPerTypo = preset?.lettersPerTypo ?: prefs.getInt(Settings.PREF_LEGIT_LETTERS_PER_TYPO, 1)
+        val randomPauseEnabled = preset?.randomPauseEnabled ?: prefs.getBoolean(Settings.PREF_MACRO_RANDOM_PAUSE_ENABLED, Defaults.PREF_MACRO_RANDOM_PAUSE_ENABLED)
+        val randomPauseMaxMs = (preset?.randomPauseMaxMs?.toLong()) ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS, Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS).toLong()
+        val randomPauseCount = preset?.randomPauseCount ?: prefs.getInt(Settings.PREF_MACRO_RANDOM_PAUSE_COUNT, Defaults.PREF_MACRO_RANDOM_PAUSE_COUNT)
         // startDelay e deja aplicat in start(), in paralel cu incarcarea fisierului
 
         messages.shuffle()
