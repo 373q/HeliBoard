@@ -204,7 +204,7 @@ private fun ShiftMacroTab() {
                 key = Settings.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
                 description = { v: Int -> "${v}ms" },
                 default = Defaults.PREF_MACRO_RANDOM_PAUSE_MAX_MS,
-                range = 100f..30000f,
+                range = 100f..3000f,
                 stepSize = 100,
             )
             SliderPreference(
@@ -349,19 +349,19 @@ private fun DumeMacroTab() {
                 description = "Inserează pauze aleatorii în secvența de mesaje",
             )
             SliderPreference(
-                name = "Random Pause — max duration (ms)",
+                name = "Random Pause — durată maximă (ms)",
                 key = Settings.PREF_DUME_RANDOM_PAUSE_MAX_MS,
                 description = { v: Int -> "${v}ms" },
                 default = Defaults.PREF_DUME_RANDOM_PAUSE_MAX_MS,
-                range = 0f..3000f,
+                range = 100f..3000f,
                 stepSize = 100,
             )
             SliderPreference(
                 name = "Random Pause — câte pauze în timp ce scrie",
                 key = Settings.PREF_DUME_RANDOM_PAUSE_COUNT,
-                description = { v: Int -> "$v pauses" },
+                description = { v: Int -> if (v == 1) "1 pauză / mesaj" else "$v pauze / mesaj" },
                 default = Defaults.PREF_DUME_RANDOM_PAUSE_COUNT,
-                range = 0f..10f,
+                range = 1f..10f,
                 stepSize = 1,
             )
             SwitchPreference(

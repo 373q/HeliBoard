@@ -298,7 +298,7 @@ object MacroManager {
                 // Pauză mid-typing — simulează că omul s-a oprit din scris
                 if (charIndex in midTypingPausePositions) {
                     if (!isRunning) return
-                    delay(Random.nextLong(randomPauseMaxMs / 3, randomPauseMaxMs + 1L))
+                    delay(Random.nextLong(100L, randomPauseMaxMs + 1L))
                 }
             }
 
