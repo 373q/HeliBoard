@@ -72,11 +72,13 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         // pornim macroul normal (fără preset).
         if (shiftPresetMode && primaryCode == ' '.code) {
             shiftPresetMode = false
+            presetModeActive = false
             helium314.keyboard.latin.macro.MacroManager.toggle(latinIME)
             return
         }
         if (dumePresetMode && primaryCode == ','.code) {
             dumePresetMode = false
+            presetModeActive = false
             helium314.keyboard.latin.macro.DumeMacroManager.toggle(latinIME)
             return
         }
@@ -128,17 +130,20 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
             // Dacă userul apasă o literă shortcut → pornim cu preset; altfel → pornim normal la release.
             KeyCode.MACRO_TOGGLE -> {
                 shiftPresetMode = true
+                presetModeActive = true
                 return
             }
             // Long-press Comma → același comportament pentru Dume.
             KeyCode.DUME_TOGGLE -> {
                 dumePresetMode = true
+                presetModeActive = true
                 return
             }
         }
         // Dacă suntem în preset mode și userul apasă o literă → căutăm preset-ul
         if (shiftPresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             shiftPresetMode = false
+            presetModeActive = false
             val preset = helium314.keyboard.latin.macro.PresetManager.findShiftPreset(latinIME, primaryCode.toChar())
             if (preset != null) {
                 helium314.keyboard.latin.macro.MacroManager.startWithPreset(latinIME, preset)
@@ -151,6 +156,7 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
         }
         if (dumePresetMode && primaryCode > 0 && primaryCode.toChar().isLetter()) {
             dumePresetMode = false
+            presetModeActive = false
             val preset = helium314.keyboard.latin.macro.PresetManager.findDumePreset(latinIME, primaryCode.toChar())
             if (preset != null) {
                 helium314.keyboard.latin.macro.DumeMacroManager.startWithPreset(latinIME, preset)
@@ -510,6 +516,10 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     companion object {
+        /** True când suntem în preset mode (așteptăm litera shortcut).
+         *  Citit din PointerTracker.java pentru a suprima visual key press pe litere. */
+        @JvmField var presetModeActive = false
+
         private enum class MetaPressState {
             UNSET, // default state, not active
             SET, // enabled without onPressKey (e.g. in popup)

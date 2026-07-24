@@ -743,7 +743,10 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
 
             startRepeatKey(key);
             startLongPressTimer(key);
-            setPressedKeyGraphics(key, eventTime);
+            // Suprimăm highlight-ul vizual pe literele shortcut când suntem în preset mode
+            if (!KeyboardActionListenerImpl.presetModeActive || !Character.isLetter(key.getCode())) {
+                setPressedKeyGraphics(key, eventTime);
+            }
             mStartX = x;
             mStartY = y;
             mStartTime = SystemClock.elapsedRealtime();
@@ -854,7 +857,9 @@ public final class PointerTracker implements PointerTrackerQueue.Element,
             return;
         }
         startLongPressTimer(key);
-        setPressedKeyGraphics(key, eventTime);
+        if (!KeyboardActionListenerImpl.presetModeActive || !Character.isLetter(key.getCode())) {
+            setPressedKeyGraphics(key, eventTime);
+        }
     }
 
     private void processProximateBogusDownMoveUpEventHack(final Key key, final int x, final int y,

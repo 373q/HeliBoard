@@ -196,6 +196,7 @@ private fun ShiftMacroTab() {
 
             // ── Presets ───────────────────────────────────────────────────
             PresetSection(
+                isShift = true,
                 presets = presets,
                 onSave = { name, key ->
                     val prefs = ctx.prefs()
@@ -384,6 +385,7 @@ private fun DumeMacroTab() {
 
             // ── Presets ───────────────────────────────────────────────────
             PresetSection(
+                isShift = false,
                 presets = presets,
                 onSave = { name, key ->
                     val prefs = ctx.prefs()
@@ -445,6 +447,7 @@ private fun DumeMacroTab() {
 // ─────────────────────────────────────────────────────────
 @Composable
 private fun PresetSection(
+    isShift: Boolean,
     presets: List<MacroPreset>,
     onSave: (name: String, shortcutKey: String) -> Unit,
     onDelete: (name: String) -> Unit,
@@ -483,6 +486,7 @@ private fun PresetSection(
         presets.forEach { preset ->
             PresetItem(
                 preset = preset,
+                isShift = isShift,
                 expanded = expandedPreset == preset.name,
                 onToggleExpand = {
                     expandedPreset = if (expandedPreset == preset.name) null else preset.name
@@ -498,6 +502,7 @@ private fun PresetSection(
     // Dialog salvare preset
     if (showSaveDialog) {
         SavePresetDialog(
+            isShift = isShift,
             onConfirm = { name, key ->
                 onSave(name, key)
                 showSaveDialog = false
@@ -510,6 +515,7 @@ private fun PresetSection(
 @Composable
 private fun PresetItem(
     preset: MacroPreset,
+    isShift: Boolean,
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onApply: () -> Unit,
@@ -538,7 +544,7 @@ private fun PresetItem(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Hold Space/Comma + [${preset.shortcutKey.uppercase()}]",
+                    text = if (isShift) "Hold Space + [${preset.shortcutKey.uppercase()}]" else "Hold Comma + [${preset.shortcutKey.uppercase()}]",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontFamily = FontFamily.Monospace,
@@ -620,6 +626,7 @@ private fun PresetSettingRow(label: String, value: String) {
 
 @Composable
 private fun SavePresetDialog(
+    isShift: Boolean,
     onConfirm: (name: String, shortcutKey: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -660,7 +667,7 @@ private fun SavePresetDialog(
                     )
                 }
                 Text(
-                    text = "Hold Space (Shift) sau Comma (Dume) + litera shortcut → pornește macro cu acest preset.",
+                    text = if (isShift) "Hold Space + litera shortcut → pornește macro Shift cu acest preset." else "Hold Comma + litera shortcut → pornește macro Dume cu acest preset.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
