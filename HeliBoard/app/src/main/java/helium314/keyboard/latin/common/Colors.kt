@@ -2,6 +2,8 @@
 
 package helium314.keyboard.latin.common
 
+import helium314.keyboard.latin.macro.DumeMacroManager
+import helium314.keyboard.latin.macro.MacroManager
 import helium314.keyboard.latin.settings.Settings
 
 import android.content.Context
@@ -606,7 +608,10 @@ private fun colorFilter(color: Int, mode: BlendModeCompat = BlendModeCompat.MODU
 }
 
 private fun pressedStateList(pressed: Int, normal: Int): ColorStateList {
-        if (Settings.getValues()?.mNoVisualKeyFeedback == true) return ColorStateList.valueOf(normal)
+    if (Settings.getValues()?.mNoVisualKeyFeedback == true
+        || MacroManager.suppressVisualFeedback
+        || DumeMacroManager.suppressVisualFeedback
+    ) return ColorStateList.valueOf(normal)
     val states = arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf(-android.R.attr.state_pressed))
     return ColorStateList(states, intArrayOf(pressed, normal))
 }

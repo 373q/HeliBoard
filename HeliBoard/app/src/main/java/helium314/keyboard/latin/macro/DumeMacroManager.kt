@@ -47,6 +47,10 @@ object DumeMacroManager {
     private var typingJob: Job? = null
     private var isRunning = false
 
+    // Flag setat pe durata start delay-ului — suprimă efectele vizuale ale tastelor apăsate
+    // în timp ce utilizatorul ține apăsat comma și macro-ul nu a început încă să scrie.
+    @Volatile var suppressVisualFeedback: Boolean = false
+
     private val macroExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "DumeTypingThread").apply {
             priority = Thread.MAX_PRIORITY
@@ -107,6 +111,9 @@ object DumeMacroManager {
 
         listener?.onMacroStart(inputPrefix != null && toolbarWasOn)
 
+        // Suprimă efectele vizuale ale tastelor pe durata start delay-ului.
+        suppressVisualFeedback = true
+
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_DUME_START_DELAY, 800).toLong()
             val startDelayDeferred = async { delay(startDelay) }
@@ -115,16 +122,20 @@ object DumeMacroManager {
             if (groups.isEmpty()) {
                 Log.w(TAG, "No dume message groups to send")
                 isRunning = false
+                suppressVisualFeedback = false
                 startDelayDeferred.cancel()
                 return@launch
             }
             startDelayDeferred.await()
+            // Start delay-ul a trecut — macro-ul începe să scrie; redăm efectele vizuale.
+            suppressVisualFeedback = false
             runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn)
         }
     }
 
     fun stop() {
         isRunning = false
+        suppressVisualFeedback = false
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null

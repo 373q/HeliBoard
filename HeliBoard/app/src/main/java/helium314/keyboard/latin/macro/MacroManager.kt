@@ -27,6 +27,10 @@ object MacroManager {
     private var typingJob: Job? = null
     private var isRunning = false
 
+    // Flag setat pe durata start delay-ului — suprimă efectele vizuale ale tastelor apăsate
+    // în timp ce utilizatorul ține apăsat space și macro-ul nu a început încă să scrie.
+    @Volatile var suppressVisualFeedback: Boolean = false
+
     // Thread dedicat, separat de pool-ul Dispatchers.Default.
     private val macroExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "MacroTypingThread").apply {
@@ -120,6 +124,9 @@ object MacroManager {
         listener?.onMacroStart((inputPrefix != null || isBoldMode) && toolbarWasOn)
         listener?.onMacroCapsState(startedShifted)
 
+        // Suprimă efectele vizuale ale tastelor pe durata start delay-ului.
+        suppressVisualFeedback = true
+
         typingJob = scope.launch {
             val startDelay = context.prefs().getInt(Settings.PREF_MACRO_START_DELAY, 800).toLong()
             val startDelayDeferred = async { delay(startDelay) }
@@ -127,17 +134,21 @@ object MacroManager {
             if (messages.isEmpty()) {
                 Log.w(TAG, "No messages to send")
                 isRunning = false
+                suppressVisualFeedback = false
                 startDelayDeferred.cancel()
                 return@launch
             }
             cachedMessages = messages
             startDelayDeferred.await()
+            // Start delay-ul a trecut — macro-ul începe să scrie; redăm efectele vizuale.
+            suppressVisualFeedback = false
             runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn)
         }
     }
 
     fun stop() {
         isRunning = false
+        suppressVisualFeedback = false
         typingJob?.cancel()
         typingJob = null
         inputPrefix = null
