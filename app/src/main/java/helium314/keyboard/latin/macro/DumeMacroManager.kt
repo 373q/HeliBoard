@@ -104,7 +104,9 @@ object DumeMacroManager {
         latePreset = null
         inStartDelayWindow = true  // fereastra se deschide imediat, înainte de coroutine
 
-        val startedShifted = listener?.isShifted() ?: false
+        // Ca la MacroManager: distingem caps lock de one-shot shift.
+        // capsOn pe tot mesajul doar dacă userul era în CAPS LOCK, nu în one-shot.
+        val startedCapsLocked = listener?.isCapsLocked() ?: false
 
         // Captureaza textul deja scris in input (trebuie pe Main thread, inainte de coroutine) —
         // devine prefixul lipit inaintea fiecarui mesaj urmator, la fel ca la Shift mode.
@@ -144,7 +146,7 @@ object DumeMacroManager {
             val effectivePreset = latePreset ?: selectedPreset
             latePreset = null
             inStartDelayWindow = false
-            runDumeMacro(context, groups.toMutableList(), startedShifted, toolbarWasOn, effectivePreset)
+            runDumeMacro(context, groups.toMutableList(), startedCapsLocked, toolbarWasOn, effectivePreset)
         }
     }
 
@@ -191,15 +193,25 @@ object DumeMacroManager {
         while (isRunning) {
             if (!isRunning) return
 
-            // Auto-stop dacă tastatura a pierdut focusul (getCurrentInputText() == null)
-            val inputAvailable = withContext(Dispatchers.Main) {
-                listener?.getCurrentInputText() != null
+            // Auto-stop: dacă tastatura a dispărut / nu mai există câmp de input activ.
+            // Nu oprim la primul null — IC-ul poate fi tranzitoriu null după send (app-ul
+            // procesează trimiterea și resetează câmpul). Așteptăm max 480ms cu retry-uri
+            // înainte să declarăm că s-a pierdut focusul cu adevărat.
+            // (Identic cu logica din MacroManager — fix pentru oprirea random a Dume.)
+            var nullRetries = 0
+            val maxNullRetries = 8 // 8 × 60ms = 480ms fereastră de grație
+            while (isRunning) {
+                val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
+                if (txt != null) break
+                nullRetries++
+                if (nullRetries >= maxNullRetries) {
+                    Log.w(TAG, "Dume: input unavailable after retries, stopping macro")
+                    isRunning = false
+                    return
+                }
+                delay(60)
             }
-            if (!inputAvailable) {
-                Log.w(TAG, "Dume: input unavailable, stopping macro")
-                isRunning = false
-                return
-            }
+            if (!isRunning) return
 
             // Dacă am terminat toate grupurile, re-shuffle și reîncepem
             if (groupIndex >= groups.size) {
@@ -297,11 +309,26 @@ object DumeMacroManager {
             val maxWaitAfterSend = 3000L
             val pollInterval = 40L
             var waitedAfterSend = 0L
+            var consecutiveNulls = 0
+            val maxConsecutiveNulls = 10 // 10 × 40ms = 400ms toleranță pentru IC tranzitoriu null
+            // după send (app-ul procesează trimiterea și poate nulifica IC temporar — nu e
+            // pierdere de focus, e latența normală de procesare a mesajului trimis)
+            // (Identic cu logica din MacroManager — fix pentru oprirea random a Dume.)
             while (isRunning && waitedAfterSend < maxWaitAfterSend) {
                 delay(pollInterval)
                 waitedAfterSend += pollInterval
                 val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
-                if (txt == null) { isRunning = false; return } // am pierdut focusul
+                if (txt == null) {
+                    consecutiveNulls++
+                    if (consecutiveNulls >= maxConsecutiveNulls) {
+                        // null persistent — focus pierdut cu adevărat
+                        Log.w(TAG, "Dume: IC null after send for ${consecutiveNulls * pollInterval}ms, stopping macro")
+                        isRunning = false
+                        return
+                    }
+                    continue // null tranzitoriu — mai așteptăm
+                }
+                consecutiveNulls = 0 // IC valid din nou, resetăm contorul
                 if (txt.isEmpty()) break // câmpul e golit, safe să continuăm
             }
 

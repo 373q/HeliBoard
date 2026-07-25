@@ -606,8 +606,14 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroResetShift() {
-                // One-shot consumat — coboară săgeata și revine la lowercase
-                mKeyboardSwitcher.setAlphabetKeyboard();
+                // One-shot consumat — coboară săgeata și revine la lowercase.
+                // Folosim resetKeyboardStateToAlphabet (nu setAlphabetKeyboard) pentru a
+                // sincroniza și mașina de stări KeyboardState (mState), nu doar layout-ul vizual.
+                // Bug fără fix: setAlphabetKeyboard() schimbă display-ul dar lasă mState în
+                // MANUAL_SHIFTED → tap ulterior pe caps face KeyboardState să anuleze one-shot-ul
+                // (nicio schimbare vizibilă), iar hold pe caps produce SHIFT_LOCKED (caps lock
+                // complet) în loc de one-shot.
+                mKeyboardSwitcher.resetKeyboardStateToAlphabet(getCurrentAutoCapsState(), getCurrentRecapitalizeState());
             }
             @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
@@ -744,8 +750,9 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroResetShift() {
-                // One-shot consumat — coboară săgeata și revine la lowercase
-                mKeyboardSwitcher.setAlphabetKeyboard();
+                // Identic cu fix-ul din listener-ul Shift — resetKeyboardStateToAlphabet
+                // sincronizează și mState, nu doar display-ul vizual.
+                mKeyboardSwitcher.resetKeyboardStateToAlphabet(getCurrentAutoCapsState(), getCurrentRecapitalizeState());
             }
             @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {

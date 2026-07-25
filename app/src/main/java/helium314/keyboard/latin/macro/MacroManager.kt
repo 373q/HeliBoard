@@ -130,7 +130,11 @@ object MacroManager {
         latePreset = null
         inStartDelayWindow = true  // fereastra se deschide imediat, înainte de coroutine
 
-        val startedShifted = listener?.isShifted() ?: false
+        // Distingem explicit caps lock de one-shot shift:
+        // - startedCapsLocked = true  → user era în CAPS LOCK → forțăm caps pe tot mesajul
+        // - startedShifted only       → user era în one-shot → NU forțăm caps lock global;
+        //   one-shot-ul e gestionat caracter cu caracter de bucla de tastare prin isShifted()
+        val startedCapsLocked = listener?.isCapsLocked() ?: false
 
         // Capture current input field text (trebuie pe Main thread, inainte de coroutine)
         val rawInput = listener?.getCurrentInputText()?.takeIf { it.isNotEmpty() }
@@ -158,7 +162,9 @@ object MacroManager {
         }
 
         listener?.onMacroStart((inputPrefix != null || isBoldMode) && toolbarWasOn)
-        listener?.onMacroCapsState(startedShifted)
+        // Forțăm caps lock vizual NUMAI dacă userul era efectiv în CAPS LOCK, nu în one-shot.
+        // One-shot-ul e gestionat caracter cu caracter de bucla de tastare.
+        listener?.onMacroCapsState(startedCapsLocked)
 
         typingJob = scope.launch {
             // Pornim delay-ul de start in paralel cu incarcarea fisierului — daca userul a pus
@@ -182,7 +188,7 @@ object MacroManager {
             val effectivePreset = latePreset ?: selectedPreset
             latePreset = null
             inStartDelayWindow = false
-            runMacro(context, messages.toMutableList(), startedShifted, toolbarWasOn, effectivePreset)
+            runMacro(context, messages.toMutableList(), startedCapsLocked, toolbarWasOn, effectivePreset)
         }
     }
 
