@@ -547,20 +547,23 @@ public class LatinIME extends InputMethodService implements
                 // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
                 // after typing a letter — no need to send KeyCode.SHIFT manually.
 
-                // Show key preview if enabled — must run on UI thread to avoid threading violations
-                // that cause inconsistent haptic feedback when user presses keys during macro.
+                // Show key press animation — lookup must happen on UI thread (keyboard state
+                // is only safe to read there, and uppercase codes may not match key codes).
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
-                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
-                    if (kb2 != null) {
-                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
-                        if (key != null) {
-                            kv.post(() -> {
-                                kv.onKeyPressed(key, true);
-                                kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
-                            });
+                    final int lookupCode = codeToSend;
+                    kv.post(() -> {
+                        final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                        if (kb2 == null) return;
+                        helium314.keyboard.keyboard.Key key = kb2.getKey(lookupCode);
+                        if (key == null && Character.isUpperCase((char) lookupCode)) {
+                            key = kb2.getKey(Character.toLowerCase((char) lookupCode));
                         }
-                    }
+                        if (key == null) return;
+                        final helium314.keyboard.keyboard.Key finalKey = key;
+                        kv.onKeyPressed(finalKey, true);
+                        kv.postDelayed(() -> kv.onKeyReleased(finalKey, true), 80);
+                    });
                 }
             }
             @Override
@@ -681,19 +684,23 @@ public class LatinIME extends InputMethodService implements
                 final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
 
-                // Show key preview / press animation, same as Shift macro — must run on UI thread
+                // Show key press animation — lookup must happen on UI thread (keyboard state
+                // is only safe to read there, and uppercase codes may not match key codes).
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
-                    final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
-                    if (kb2 != null) {
-                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
-                        if (key != null) {
-                            kv.post(() -> {
-                                kv.onKeyPressed(key, true);
-                                kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
-                            });
+                    final int lookupCode = codeToSend;
+                    kv.post(() -> {
+                        final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
+                        if (kb2 == null) return;
+                        helium314.keyboard.keyboard.Key key = kb2.getKey(lookupCode);
+                        if (key == null && Character.isUpperCase((char) lookupCode)) {
+                            key = kb2.getKey(Character.toLowerCase((char) lookupCode));
                         }
-                    }
+                        if (key == null) return;
+                        final helium314.keyboard.keyboard.Key finalKey = key;
+                        kv.onKeyPressed(finalKey, true);
+                        kv.postDelayed(() -> kv.onKeyReleased(finalKey, true), 80);
+                    });
                 }
             }
             @Override
