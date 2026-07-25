@@ -63,9 +63,10 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     private var consumedPresetKeyCode = -1
 
     override fun onPressKey(primaryCode: Int, repeatCount: Int, isSinglePointer: Boolean, hapticEvent: HapticEvent) {
-        // În preset mode: suprimă orice efect vizual/haptic pe tasta apăsată —
-        // nu vrem să apară animație de press pe litera shortcut.
+        // În preset mode: suprimă efectele VIZUALE pe tasta apăsată (nu vrem highlight
+        // pe litera shortcut), dar vibratia/sunetul trebuie să meargă în continuare.
         if (shiftPresetMode || dumePresetMode) {
+            latinIME.hapticAndAudioFeedback(primaryCode, repeatCount, hapticEvent)
             return
         }
         metaOnPressKey(primaryCode)

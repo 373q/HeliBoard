@@ -552,16 +552,20 @@ public class LatinIME extends InputMethodService implements
                 // fiecare literă produc lag în aplicația țintă, fără să schimbe textul rezultat.
                 ic.commitText(String.valueOf(c), 1);
 
-                // Animație vizuală pe tastă (aceeași ca înainte)
+                // Animație vizuală pe tastă — folosim showMacroKeyPress care ocolește
+                // guard-ul presetModeActive din onKeyPressed (altfel animația e suprimată
+                // cât timp userul mai ține degetul pe Space după long-press).
                 final int codeToSend = (int) c;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
                     if (kb2 != null) {
-                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
+                        helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
+                        // Fallback: încearcă varianta lowercase dacă tastatura curentă e
+                        // în layoutul lowercase dar caracterul e uppercase (ex: caps lock off).
+                        if (key == null) key = kb2.getKey(Character.toLowerCase(c));
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.showMacroKeyPress(key);
                         }
                     }
                 }
@@ -638,7 +642,7 @@ public class LatinIME extends InputMethodService implements
                 if (ic == null) return;
                 ic.deleteSurroundingText(1, 0);
 
-                // Animație vizuală pe tasta delete
+                // Animație vizuală pe tasta delete — folosim showMacroKeyPress
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
@@ -646,8 +650,7 @@ public class LatinIME extends InputMethodService implements
                     if (kb2 != null) {
                         final helium314.keyboard.keyboard.Key key = kb2.getKey(deleteCode);
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.showMacroKeyPress(key);
                         }
                     }
                 }
@@ -687,16 +690,17 @@ public class LatinIME extends InputMethodService implements
                 if (ic == null) return;
                 ic.commitText(String.valueOf(c), 1);
 
-                // Animație vizuală pe tastă
+                // Animație vizuală pe tastă — showMacroKeyPress ocolește guard-ul
+                // presetModeActive (fix identic cu listener-ul Shift de mai sus).
                 final int codeToSend = (int) c;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final helium314.keyboard.keyboard.Keyboard kb2 = mKeyboardSwitcher.getKeyboard();
                     if (kb2 != null) {
-                        final helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
+                        helium314.keyboard.keyboard.Key key = kb2.getKey(codeToSend);
+                        if (key == null) key = kb2.getKey(Character.toLowerCase(c));
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.showMacroKeyPress(key);
                         }
                     }
                 }
@@ -769,7 +773,7 @@ public class LatinIME extends InputMethodService implements
                 if (ic == null) return;
                 ic.deleteSurroundingText(1, 0);
 
-                // Animație vizuală pe tasta delete
+                // Animație vizuală pe tasta delete — showMacroKeyPress
                 final int deleteCode = helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.DELETE;
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
@@ -777,8 +781,7 @@ public class LatinIME extends InputMethodService implements
                     if (kb2 != null) {
                         final helium314.keyboard.keyboard.Key key = kb2.getKey(deleteCode);
                         if (key != null) {
-                            kv.onKeyPressed(key, true);
-                            kv.postDelayed(() -> kv.onKeyReleased(key, true), 80);
+                            kv.showMacroKeyPress(key);
                         }
                     }
                 }

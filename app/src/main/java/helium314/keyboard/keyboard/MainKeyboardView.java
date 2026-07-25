@@ -408,6 +408,20 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         }
     }
 
+    /**
+     * Called directly by macro typing — bypasses the presetModeActive guard so the
+     * key highlight shows even when the user is still holding Space/Comma during the
+     * start-delay window. Do NOT use this for regular touch events.
+     */
+    public void showMacroKeyPress(@NonNull final Key key) {
+        key.onPressed();
+        invalidateKey(key);
+        postDelayed(() -> {
+            key.onReleased();
+            invalidateKey(key);
+        }, 80);
+    }
+
     private void dismissKeyPreview(@NonNull final Key key) {
         if (isHardwareAccelerated()) {
             mKeyPreviewChoreographer.dismissKeyPreview(key);
