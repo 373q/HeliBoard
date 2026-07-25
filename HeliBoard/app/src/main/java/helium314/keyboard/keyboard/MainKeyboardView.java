@@ -366,6 +366,11 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
             return;
         }
+        // During macro start delay suppress all other key feedback too (e.g. accidental touches).
+        if (helium314.keyboard.latin.macro.MacroManager.INSTANCE.getSuppressVisualFeedback()
+                || helium314.keyboard.latin.macro.DumeMacroManager.INSTANCE.getSuppressVisualFeedback()) {
+            return;
+        }
         key.onPressed();
         invalidateKey(key);
 
@@ -377,6 +382,20 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
         if (withPreview && key.hasPreview() && mKeyPreviewDrawParams.isPopupEnabled()) {
             showKeyPreview(key);
         }
+    }
+
+    /**
+     * Called by the macro engine to show a key-press animation for a typed character.
+     * Bypasses all suppression checks — the macro is already past the start delay at this point.
+     * Must be called on the UI thread.
+     */
+    public void showMacroKeyFeedback(@NonNull final Key key) {
+        key.onPressed();
+        invalidateKey(key);
+        postDelayed(() -> {
+            key.onReleased();
+            invalidateKey(key);
+        }, 80);
     }
 
     private void showKeyPreview(@NonNull final Key key) {

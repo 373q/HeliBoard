@@ -547,8 +547,8 @@ public class LatinIME extends InputMethodService implements
                 // Note: one-shot (manual) shift is automatically reset by the keyboard state machine
                 // after typing a letter — no need to send KeyCode.SHIFT manually.
 
-                // Show key press animation — lookup must happen on UI thread (keyboard state
-                // is only safe to read there, and uppercase codes may not match key codes).
+                // Show key press animation via dedicated macro method (bypasses suppression checks).
+                // All lookups happen on UI thread to avoid race conditions.
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final int lookupCode = codeToSend;
@@ -560,9 +560,7 @@ public class LatinIME extends InputMethodService implements
                             key = kb2.getKey(Character.toLowerCase((char) lookupCode));
                         }
                         if (key == null) return;
-                        final helium314.keyboard.keyboard.Key finalKey = key;
-                        kv.onKeyPressed(finalKey, true);
-                        kv.postDelayed(() -> kv.onKeyReleased(finalKey, true), 80);
+                        kv.showMacroKeyFeedback(key);
                     });
                 }
             }
@@ -684,8 +682,8 @@ public class LatinIME extends InputMethodService implements
                 final int codeToSend = (int) c;
                 onCodeInput(codeToSend, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE, false);
 
-                // Show key press animation — lookup must happen on UI thread (keyboard state
-                // is only safe to read there, and uppercase codes may not match key codes).
+                // Show key press animation via dedicated macro method (bypasses suppression checks).
+                // All lookups happen on UI thread to avoid race conditions.
                 final MainKeyboardView kv = mKeyboardSwitcher.getMainKeyboardView();
                 if (kv != null) {
                     final int lookupCode = codeToSend;
@@ -697,9 +695,7 @@ public class LatinIME extends InputMethodService implements
                             key = kb2.getKey(Character.toLowerCase((char) lookupCode));
                         }
                         if (key == null) return;
-                        final helium314.keyboard.keyboard.Key finalKey = key;
-                        kv.onKeyPressed(finalKey, true);
-                        kv.postDelayed(() -> kv.onKeyReleased(finalKey, true), 80);
+                        kv.showMacroKeyFeedback(key);
                     });
                 }
             }
