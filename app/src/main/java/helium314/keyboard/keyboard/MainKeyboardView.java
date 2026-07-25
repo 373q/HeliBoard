@@ -414,6 +414,11 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
      * start-delay window. Do NOT use this for regular touch events.
      */
     public void showMacroKeyPress(@NonNull final Key key) {
+        // Space și Comma: fără efect vizual, la fel ca la apăsarea normală de user.
+        if (key.getCode() == helium314.keyboard.latin.common.Constants.CODE_SPACE
+                || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
+            return;
+        }
         key.onPressed();
         invalidateKey(key);
         // Arată popup-ul de preview exact ca onKeyPressed(key, true)
