@@ -366,13 +366,6 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
                 || key.getCode() == helium314.keyboard.latin.common.Constants.CODE_COMMA) {
             return;
         }
-        // During macro start delay (while user holds space/comma), suppress all visual key feedback.
-        // Once the delay expires and the macro starts typing, suppressVisualFeedback is reset to
-        // false and key animations return to normal.
-        if (MacroManager.INSTANCE.getSuppressVisualFeedback()
-                || DumeMacroManager.INSTANCE.getSuppressVisualFeedback()) {
-            return;
-        }
         key.onPressed();
         invalidateKey(key);
 
