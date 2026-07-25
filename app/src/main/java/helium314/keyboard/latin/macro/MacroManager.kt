@@ -230,15 +230,24 @@ object MacroManager {
         while (isRunning) {
             if (!isRunning) return
 
-            // Auto-stop: dacă tastatura a dispărut / nu mai există câmp de input activ
-            val inputAvailable = withContext(Dispatchers.Main) {
-                listener?.getCurrentInputText() != null
+            // Auto-stop: dacă tastatura a dispărut / nu mai există câmp de input activ.
+            // Nu oprim la primul null — IC-ul poate fi tranzitoriu null după send (app-ul
+            // procesează trimiterea și resetează câmpul). Așteptăm max 500ms cu retry-uri
+            // înainte să declarăm că s-a pierdut focusul cu adevărat.
+            var nullRetries = 0
+            val maxNullRetries = 8 // 8 × 60ms = 480ms fereastră de grație
+            while (isRunning) {
+                val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
+                if (txt != null) break // IC valid, continuăm
+                nullRetries++
+                if (nullRetries >= maxNullRetries) {
+                    Log.w(TAG, "Shift: input unavailable after retries, stopping macro")
+                    isRunning = false
+                    return
+                }
+                delay(60)
             }
-            if (!inputAvailable) {
-                Log.w(TAG, "Shift: input unavailable, stopping macro")
-                isRunning = false
-                return
-            }
+            if (!isRunning) return
 
             if (index >= messages.size) {
                 messages.shuffle()
@@ -367,11 +376,25 @@ object MacroManager {
             val maxWaitAfterSend = 3000L
             val pollInterval = 40L
             var waitedAfterSend = 0L
+            var consecutiveNulls = 0
+            val maxConsecutiveNulls = 10 // 10 × 40ms = 400ms toleranță pentru IC tranzitoriu null
+            // după send (app-ul procesează trimiterea și poate nulifica IC temporar — nu e
+            // pierdere de focus, e latența normală de procesare a mesajului trimis)
             while (isRunning && waitedAfterSend < maxWaitAfterSend) {
                 delay(pollInterval)
                 waitedAfterSend += pollInterval
                 val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
-                if (txt == null) { isRunning = false; return } // am pierdut focusul
+                if (txt == null) {
+                    consecutiveNulls++
+                    if (consecutiveNulls >= maxConsecutiveNulls) {
+                        // null persistent — focus pierdut cu adevărat
+                        Log.w(TAG, "Shift: IC null after send for ${consecutiveNulls * pollInterval}ms, stopping macro")
+                        isRunning = false
+                        return
+                    }
+                    continue // null tranzitoriu — mai așteptăm
+                }
+                consecutiveNulls = 0 // IC valid din nou, resetăm contorul
                 if (txt.isEmpty()) break // câmpul e golit, safe să continuăm
             }
 
