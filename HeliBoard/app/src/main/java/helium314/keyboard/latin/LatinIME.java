@@ -1299,8 +1299,12 @@ public class LatinIME extends InputMethodService implements
     void onFinishInputViewInternal(final boolean finishingInput) {
         super.onFinishInputView(finishingInput);
         Log.i(TAG, "onFinishInputView");
-        // Macro-ul continuă să ruleze chiar dacă tastatura pierde focusul momentan —
-        // se oprește DOAR la stop manual (tap space/comma).
+        // The input field/keyboard view is going away (app switched, field lost focus, etc).
+        // A running macro must fully stop here rather than silently idling through its
+        // delay and resuming on its own once input becomes available again — the user
+        // has to press Start manually to resume.
+        MacroManager.INSTANCE.stop();
+        DumeMacroManager.INSTANCE.stop();
         cleanupInternalStateForFinishInput();
     }
 
