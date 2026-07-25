@@ -91,6 +91,13 @@ object MacroManager {
         fun onMacroDeleteChar() { onMacroTypeChar('\b') }
 
         /**
+         * Resetează keyboard-ul la starea unshifted după ce macroul a tastat un caracter
+         * în one-shot shift (MANUAL_SHIFTED). Astfel săgeata coboară și revine la normal.
+         * Implementare implicită goală — suprascrie în keyboard service.
+         */
+        fun onMacroResetShift() {}
+
+        /**
          * Sincronizează starea internă a input connection-ului cu app-ul.
          * Chemat o singură dată la pornirea macro-ului, înainte de prima tastă.
          * Rezolvă bug-ul unde prima tastă e silently dropped după long-press +
@@ -302,6 +309,14 @@ object MacroManager {
                     )
                 } else {
                     withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
+                }
+
+                // One-shot shift: dacă era MANUAL_SHIFTED (nu caps lock), resetăm keyboard-ul
+                // la unshifted după primul caracter — exact ca în tastarea normală prin InputLogic.
+                // Fără asta, starea one-shot rămâne activă pe tot mesajul (toate literele cu majusculă)
+                // și vizual săgeata nu coboară niciodată.
+                if (shiftedNow && !capsNow) {
+                    withContext(Dispatchers.Main) { listener?.onMacroResetShift() }
                 }
 
                 val d = when (charIndex) {

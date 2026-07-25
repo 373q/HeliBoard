@@ -605,6 +605,11 @@ public class LatinIME extends InputMethodService implements
                 }
             }
             @Override
+            public void onMacroResetShift() {
+                // One-shot consumat — coboară săgeata și revine la lowercase
+                mKeyboardSwitcher.setAlphabetKeyboard();
+            }
+            @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
                 int code = toSymbols
                         ? helium314.keyboard.keyboard.internal.keyboard_parser.floris.KeyCode.SYMBOL
@@ -736,6 +741,11 @@ public class LatinIME extends InputMethodService implements
                 if (capsOn) {
                     mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
                 }
+            }
+            @Override
+            public void onMacroResetShift() {
+                // One-shot consumat — coboară săgeata și revine la lowercase
+                mKeyboardSwitcher.setAlphabetKeyboard();
             }
             @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
