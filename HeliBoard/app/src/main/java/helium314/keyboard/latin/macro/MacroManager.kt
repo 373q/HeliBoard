@@ -178,15 +178,6 @@ object MacroManager {
         while (isRunning) {
             if (!isRunning) return
 
-            val inputAvailable = withContext(Dispatchers.Main) {
-                listener?.getCurrentInputText() != null
-            }
-            if (!inputAvailable) {
-                Log.w(TAG, "Shift: input unavailable, stopping macro")
-                isRunning = false
-                return
-            }
-
             if (index >= messages.size) {
                 messages.shuffle()
                 index = 0
