@@ -386,15 +386,27 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
 
     /**
      * Called by the macro engine to show a key-press animation for a typed character.
-     * Bypasses all suppression checks — the macro is already past the start delay at this point.
+     * Replicates onKeyPressed + onKeyReleased exactly, bypassing suppression checks.
      * Must be called on the UI thread.
      */
     public void showMacroKeyFeedback(@NonNull final Key key) {
+        // Press
         key.onPressed();
         invalidateKey(key);
+        final Keyboard keyboard = getKeyboard();
+        if (keyboard != null) {
+            mKeyPreviewDrawParams.setVisibleOffset(-keyboard.mVerticalGap);
+            if (key.hasPreview() && mKeyPreviewDrawParams.isPopupEnabled()) {
+                showKeyPreview(key);
+            }
+        }
+        // Release after 80ms
         postDelayed(() -> {
             key.onReleased();
             invalidateKey(key);
+            if (key.hasPreview()) {
+                dismissKeyPreview(key);
+            }
         }, 80);
     }
 
