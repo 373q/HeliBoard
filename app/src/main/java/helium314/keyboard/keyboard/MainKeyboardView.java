@@ -416,9 +416,20 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
     public void showMacroKeyPress(@NonNull final Key key) {
         key.onPressed();
         invalidateKey(key);
+        // Arată popup-ul de preview exact ca onKeyPressed(key, true)
+        final Keyboard keyboard = getKeyboard();
+        if (keyboard != null) {
+            mKeyPreviewDrawParams.setVisibleOffset(-keyboard.mVerticalGap);
+            if (key.hasPreview() && mKeyPreviewDrawParams.isPopupEnabled()) {
+                showKeyPreview(key);
+            }
+        }
         postDelayed(() -> {
             key.onReleased();
             invalidateKey(key);
+            if (key.hasPreview()) {
+                dismissKeyPreview(key);
+            }
         }, 80);
     }
 
