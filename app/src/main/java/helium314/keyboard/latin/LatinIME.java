@@ -607,13 +607,15 @@ public class LatinIME extends InputMethodService implements
             @Override
             public void onMacroResetShift() {
                 // One-shot consumat — coboară săgeata și revine la lowercase.
-                // Folosim resetKeyboardStateToAlphabet (nu setAlphabetKeyboard) pentru a
-                // sincroniza și mașina de stări KeyboardState (mState), nu doar layout-ul vizual.
-                // Bug fără fix: setAlphabetKeyboard() schimbă display-ul dar lasă mState în
-                // MANUAL_SHIFTED → tap ulterior pe caps face KeyboardState să anuleze one-shot-ul
-                // (nicio schimbare vizibilă), iar hold pe caps produce SHIFT_LOCKED (caps lock
-                // complet) în loc de one-shot.
-                mKeyboardSwitcher.resetKeyboardStateToAlphabet(getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+                // resetKeyboardStateToAlphabet() nu funcționează: are guard "if (mode==ALPHABET) return"
+                // → nu face nimic când macro rulează pe tastatura alphabetică.
+                // requestUpdatingShiftState(0, null) apelează updateAlphabetShiftState(CAP_MODE_OFF, null)
+                // care: verifică shiftKeyState.isReleasing (true) + !isShiftLocked (true pentru MANUAL_SHIFTED)
+                // → apelează setShifted(UNSHIFT) → resetează mState la UNSHIFTED ȘI actualizează vizualul
+                // la ELEMENT_ALPHABET. Fără asta, mState rămâne MANUAL_SHIFTED → tap pe caps face
+                // KeyboardState să meargă pe ramura "isShiftedOrShiftLocked" → onPressOnShifted()
+                // fără nicio schimbare vizibilă.
+                mKeyboardSwitcher.requestUpdatingShiftState(0, null);
             }
             @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
@@ -750,9 +752,10 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroResetShift() {
-                // Identic cu fix-ul din listener-ul Shift — resetKeyboardStateToAlphabet
-                // sincronizează și mState, nu doar display-ul vizual.
-                mKeyboardSwitcher.resetKeyboardStateToAlphabet(getCurrentAutoCapsState(), getCurrentRecapitalizeState());
+                // Identic cu fix-ul din listener-ul Shift — requestUpdatingShiftState(0, null)
+                // este singura metodă care resetează corect mState (MANUAL_SHIFTED → UNSHIFTED)
+                // ȘI vizualul, chiar dacă mode == ALPHABET.
+                mKeyboardSwitcher.requestUpdatingShiftState(0, null);
             }
             @Override
             public void onMacroSwitchKeyboard(boolean toSymbols) {
