@@ -463,6 +463,15 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         }
     }
 
+    /**
+     * Setează / șterge flag-ul macroShiftPending în KeyboardState.
+     * Apelat din KeyboardActionListenerImpl când userul apasă Shift în timp ce
+     * macro rulează, respectiv din LatinIME.onMacroResetShift() după consumarea one-shot.
+     */
+    public void setMacroShiftPending(boolean pending) {
+        mState.setMacroShiftPending(pending);
+    }
+
     // Future method for requesting an updating to the shift state.
     @Override
     public void requestUpdatingShiftState(final int autoCapsFlags, @Nullable final RecapitalizeMode recapitalizeMode) {

@@ -607,14 +607,9 @@ public class LatinIME extends InputMethodService implements
             @Override
             public void onMacroResetShift() {
                 // One-shot consumat — coboară săgeata și revine la lowercase.
-                // resetKeyboardStateToAlphabet() nu funcționează: are guard "if (mode==ALPHABET) return"
-                // → nu face nimic când macro rulează pe tastatura alphabetică.
-                // requestUpdatingShiftState(0, null) apelează updateAlphabetShiftState(CAP_MODE_OFF, null)
-                // care: verifică shiftKeyState.isReleasing (true) + !isShiftLocked (true pentru MANUAL_SHIFTED)
-                // → apelează setShifted(UNSHIFT) → resetează mState la UNSHIFTED ȘI actualizează vizualul
-                // la ELEMENT_ALPHABET. Fără asta, mState rămâne MANUAL_SHIFTED → tap pe caps face
-                // KeyboardState să meargă pe ramura "isShiftedOrShiftLocked" → onPressOnShifted()
-                // fără nicio schimbare vizibilă.
+                // Ștergem mai întâi macroShiftPending astfel încât requestUpdatingShiftState
+                // să poată reseta MANUAL_SHIFTED → UNSHIFTED (altfel flag-ul blochează reset-ul).
+                mKeyboardSwitcher.setMacroShiftPending(false);
                 mKeyboardSwitcher.requestUpdatingShiftState(0, null);
             }
             @Override
@@ -752,9 +747,9 @@ public class LatinIME extends InputMethodService implements
             }
             @Override
             public void onMacroResetShift() {
-                // Identic cu fix-ul din listener-ul Shift — requestUpdatingShiftState(0, null)
-                // este singura metodă care resetează corect mState (MANUAL_SHIFTED → UNSHIFTED)
-                // ȘI vizualul, chiar dacă mode == ALPHABET.
+                // Identic cu listener-ul Shift: ștergem macroShiftPending înainte de reset
+                // astfel încât updateAlphabetShiftState să poată coborî săgeata la UNSHIFTED.
+                mKeyboardSwitcher.setMacroShiftPending(false);
                 mKeyboardSwitcher.requestUpdatingShiftState(0, null);
             }
             @Override
