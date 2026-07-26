@@ -190,6 +190,12 @@ object DumeMacroManager {
         // la long-press când IC-ul e deja activ, nu la release când poate fi null/stale).
         withContext(Dispatchers.Main) { listener?.onMacroPrimeConnection() }
 
+        // Flag pentru a sări null-check-ul redundant la tranziția de grup.
+        // La trecerea dintre grupe, null-check-ul s-a executat deja în iterația anterioară
+        // (după after-send wait + msgDelay, IC e garantat valid). Un al doilea check imediat
+        // crește expunerea la IC tranzitoriu null → risc de oprire aleatorie suplimentar.
+        var skipNullCheckThisIteration = false
+
         while (isRunning) {
             if (!isRunning) return
 
@@ -197,21 +203,24 @@ object DumeMacroManager {
             // Nu oprim la primul null — IC-ul poate fi tranzitoriu null după send (app-ul
             // procesează trimiterea și resetează câmpul). Așteptăm max 480ms cu retry-uri
             // înainte să declarăm că s-a pierdut focusul cu adevărat.
-            // (Identic cu logica din MacroManager — fix pentru oprirea random a Dume.)
-            var nullRetries = 0
-            val maxNullRetries = 8 // 8 × 60ms = 480ms fereastră de grație
-            while (isRunning) {
-                val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
-                if (txt != null) break
-                nullRetries++
-                if (nullRetries >= maxNullRetries) {
-                    Log.w(TAG, "Dume: input unavailable after retries, stopping macro")
-                    isRunning = false
-                    return
+            // skipNullCheckThisIteration: sări check-ul la tranziția de grup (IC tocmai validat).
+            if (!skipNullCheckThisIteration) {
+                var nullRetries = 0
+                val maxNullRetries = 8 // 8 × 60ms = 480ms fereastră de grație
+                while (isRunning) {
+                    val txt = withContext(Dispatchers.Main) { listener?.getCurrentInputText() }
+                    if (txt != null) break
+                    nullRetries++
+                    if (nullRetries >= maxNullRetries) {
+                        Log.w(TAG, "Dume: input unavailable after retries, stopping macro")
+                        isRunning = false
+                        return
+                    }
+                    delay(60)
                 }
-                delay(60)
+                if (!isRunning) return
             }
-            if (!isRunning) return
+            skipNullCheckThisIteration = false
 
             // Dacă am terminat toate grupurile, re-shuffle și reîncepem
             if (groupIndex >= groups.size) {
@@ -222,10 +231,13 @@ object DumeMacroManager {
 
             val group = groups[groupIndex]
 
-            // Dacă am terminat liniile din grupul curent, trecem la următorul grup
+            // Dacă am terminat liniile din grupul curent, trecem la următorul grup.
+            // Setăm skipNullCheckThisIteration = true: IC a fost validat în iterația
+            // curentă (după after-send wait + msgDelay), nu are rost să-l verificăm din nou.
             if (lineIndexInGroup >= group.size) {
                 groupIndex++
                 lineIndexInGroup = 0
+                skipNullCheckThisIteration = true
                 continue
             }
 
@@ -255,11 +267,19 @@ object DumeMacroManager {
             val midTypingPausePositions = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && line.length > 1) {
                 (1 until line.length).shuffled().take(randomPauseCount).toSet()
             } else emptySet()
+
+            // Citim starea caps/shift O SINGURĂ DATĂ pe Main thread, înainte de bucla de tastare.
+            // Motivele: thread-safety (isShifted()/isCapsLocked() accesează keyboard state din Main
+            // thread) + one-shot se aplică la ÎNTREG mesajul (indicatorul de shift rămâne activ
+            // pe toată durata mesajului, nu doar 80ms). onMacroResetShift() apelat o singură dată
+            // după mesaj, nu după fiecare caracter — identic cu fix-ul din MacroManager.
+            val (capsNowForMsg, shiftedNowForMsg) = withContext(Dispatchers.Main) {
+                Pair(listener?.isCapsLocked() ?: false, listener?.isShifted() ?: false)
+            }
+
             for ((charIndex, char) in line.withIndex()) {
                 if (!isRunning) return
-                val capsNow = listener?.isCapsLocked() ?: false
-                val shiftedNow = listener?.isShifted() ?: false
-                val charToType = if (capsNow || shiftedNow) char.uppercaseChar() else char.lowercaseChar()
+                val charToType = if (capsOn || capsNowForMsg || shiftedNowForMsg) char.uppercaseChar() else char.lowercaseChar()
 
                 if (legitMode && char.isLetter()) {
                     LegitMode.typeCharWithPossibleTypo(
@@ -292,6 +312,13 @@ object DumeMacroManager {
                     delay(Random.nextLong(100L, randomPauseMaxMs + 1L))
                 }
                 if (!isRunning) return
+            }
+
+            // One-shot shift: resetăm keyboard-ul O SINGURĂ DATĂ după linia completă.
+            // Identic cu fix-ul din MacroManager — indicatorul de shift rămâne vizibil
+            // pe toată durata tastării, nu dispare după primul caracter.
+            if (shiftedNowForMsg && !capsNowForMsg) {
+                withContext(Dispatchers.Main) { listener?.onMacroResetShift() }
             }
 
             if (!isRunning) return

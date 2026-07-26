@@ -303,11 +303,23 @@ object MacroManager {
             val midTypingPausePositions = if (randomPauseEnabled && randomPauseCount > 0 && randomPauseMaxMs > 0 && msg.length > 1) {
                 (1 until msg.length).shuffled().take(randomPauseCount).toSet()
             } else emptySet()
+
+            // Citim starea caps/shift O SINGURĂ DATĂ pe Main thread, înainte de bucla de tastare.
+            // Motivele:
+            // 1. Thread-safety: isShifted()/isCapsLocked() accesează keyboard state din Main thread;
+            //    apelate de pe macroThread pot returna valori stale din cauza vizibilității de memorie.
+            // 2. One-shot se aplică la ÎNTREG mesajul (nu doar primul caracter): utilizatorul
+            //    apasă caps → vrea tot mesajul următor cu majusculă, nu doar prima literă.
+            //    Vizual: indicatorul de shift rămâne activ pe toată durata mesajului, nu 80ms.
+            // 3. onMacroResetShift() e apelat O SINGURĂ DATĂ după mesajul complet (nu per caracter),
+            //    dând timp vizual suficient utilizatorului să vadă că one-shot a fost consumat.
+            val (capsNowForMsg, shiftedNowForMsg) = withContext(Dispatchers.Main) {
+                Pair(listener?.isCapsLocked() ?: false, listener?.isShifted() ?: false)
+            }
+
             for ((charIndex, char) in msg.withIndex()) {
                 if (!isRunning) return
-                val capsNow = listener?.isCapsLocked() ?: false
-                val shiftedNow = listener?.isShifted() ?: false
-                val charToType = if (capsNow || shiftedNow) char.uppercaseChar() else char.lowercaseChar()
+                val charToType = if (capsOn || capsNowForMsg || shiftedNowForMsg) char.uppercaseChar() else char.lowercaseChar()
 
                 if (legitMode && char.isLetter()) {
                     LegitMode.typeCharWithPossibleTypo(
@@ -326,14 +338,6 @@ object MacroManager {
                     withContext(Dispatchers.Main) { listener?.onMacroTypeChar(charToType) }
                 }
 
-                // One-shot shift: dacă era MANUAL_SHIFTED (nu caps lock), resetăm keyboard-ul
-                // la unshifted după primul caracter — exact ca în tastarea normală prin InputLogic.
-                // Fără asta, starea one-shot rămâne activă pe tot mesajul (toate literele cu majusculă)
-                // și vizual săgeata nu coboară niciodată.
-                if (shiftedNow && !capsNow) {
-                    withContext(Dispatchers.Main) { listener?.onMacroResetShift() }
-                }
-
                 val d = when (charIndex) {
                     0 -> 120L
                     1 -> 100L
@@ -347,6 +351,13 @@ object MacroManager {
                     if (!isRunning) return
                     delay(Random.nextLong(100L, randomPauseMaxMs + 1L))
                 }
+            }
+
+            // One-shot shift: resetăm keyboard-ul O SINGURĂ DATĂ după mesajul complet.
+            // Anterior era resetat după PRIMUL caracter → utilizatorul vedea efectul max 80ms.
+            // Acum indicatorul de shift rămâne activ pe toată durata mesajului → feedback vizual clar.
+            if (shiftedNowForMsg && !capsNowForMsg) {
+                withContext(Dispatchers.Main) { listener?.onMacroResetShift() }
             }
 
             // Inchide ** la sfarsit (bold mode)
