@@ -601,7 +601,16 @@ public class LatinIME extends InputMethodService implements
             @Override
             public void onMacroCapsState(boolean capsOn) {
                 if (capsOn) {
-                    mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                    // Setăm caps lock NUMAI dacă tastatura nu e deja în acea stare.
+                    // Apelul redundant pe o tastatură deja SHIFT_LOCKED declanșează un reload
+                    // de layout care poate produce un glitch vizual și interferează cu starea.
+                    final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                    final boolean alreadyCaps = kb != null
+                            && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
+                                || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
+                    if (!alreadyCaps) {
+                        mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                    }
                 }
             }
             @Override
@@ -742,13 +751,20 @@ public class LatinIME extends InputMethodService implements
             @Override
             public void onMacroCapsState(boolean capsOn) {
                 if (capsOn) {
-                    mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                    // Identic cu listener-ul Shift: guard contra reload redundant.
+                    final helium314.keyboard.keyboard.Keyboard kb = mKeyboardSwitcher.getKeyboard();
+                    final boolean alreadyCaps = kb != null
+                            && (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED
+                                || kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED);
+                    if (!alreadyCaps) {
+                        mKeyboardSwitcher.setAlphabetShiftLockedKeyboard();
+                    }
                 }
             }
             @Override
             public void onMacroResetShift() {
                 // Identic cu listener-ul Shift: ștergem macroShiftPending înainte de reset
-                // astfel încât updateAlphabetShiftState să poată coborî săgeata la UNSHIFTED.
+                // astfel încât requestUpdatingShiftState să poată trece garda și reseta starea.
                 mKeyboardSwitcher.setMacroShiftPending(false);
                 mKeyboardSwitcher.requestUpdatingShiftState(0, null);
             }

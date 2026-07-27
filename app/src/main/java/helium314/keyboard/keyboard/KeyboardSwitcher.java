@@ -31,6 +31,8 @@ import androidx.annotation.Nullable;
 
 import helium314.keyboard.event.Event;
 import helium314.keyboard.keyboard.KeyboardLayoutSet.KeyboardLayoutSetException;
+import helium314.keyboard.latin.macro.MacroManager;
+import helium314.keyboard.latin.macro.DumeMacroManager;
 import helium314.keyboard.keyboard.clipboard.ClipboardHistoryView;
 import helium314.keyboard.keyboard.emoji.EmojiPalettesView;
 import helium314.keyboard.keyboard.internal.KeyboardState;
@@ -479,6 +481,15 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
             Log.d(TAG, "requestUpdatingShiftState: "
                     + " autoCapsFlags=" + CapsModeUtils.flagsToString(autoCapsFlags)
                     + " recapitalizeMode=" + recapitalizeMode);
+        }
+        // Dacă userul a apăsat Shift (one-shot) și macroul rulează, blocăm reset-ul automat
+        // declanșat de onUpdateSelection → commitText.
+        // macroShiftPending este cleared de onMacroResetShift() când one-shot-ul e consumat,
+        // moment în care requestUpdatingShiftState este chemat explicit cu macroShiftPending=false
+        // și reset-ul trece normal.
+        if (mState.getMacroShiftPending()
+                && (MacroManager.INSTANCE.isRunning() || DumeMacroManager.INSTANCE.isRunning())) {
+            return;
         }
         mState.onUpdateShiftState(autoCapsFlags, recapitalizeMode);
     }

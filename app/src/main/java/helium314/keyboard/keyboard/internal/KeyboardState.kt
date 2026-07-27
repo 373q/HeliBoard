@@ -66,6 +66,8 @@ class KeyboardState(private val switchActions: SwitchActions) {
     // (declanșat de onUpdateSelection după fiecare commitText al macro-ului).
     // Cleared de onMacroResetShift() după ce one-shot-ul a fost consumat.
     var macroShiftPending = false
+
+    fun getMacroShiftPending() = macroShiftPending
     private val alphabetShiftState = AlphabetShiftState()
 
     private var switchState = SwitchState.ALPHA
@@ -491,9 +493,7 @@ class KeyboardState(private val switchActions: SwitchActions) {
                 // Only when shift key is releasing, automatic temporary upper case will be set.
                 shiftKeyState.isReleasing && autoCapsFlags != Constants.TextUtils.CAP_MODE_OFF -> ShiftMode.AUTOMATIC
                 shiftKeyState.isChording -> ShiftMode.MANUAL
-                // macroShiftPending: userul a apăsat Shift în timp ce macro rulează.
-                // Păstrăm MANUAL_SHIFTED vizual până la consumarea one-shot-ului.
-                else -> if (macroShiftPending) ShiftMode.MANUAL else ShiftMode.UNSHIFT
+                else -> ShiftMode.UNSHIFT
             }
             setShifted(shifted)
         }

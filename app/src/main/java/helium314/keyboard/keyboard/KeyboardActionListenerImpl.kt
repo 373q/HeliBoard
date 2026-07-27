@@ -152,34 +152,30 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
     }
 
     override fun onCodeInput(primaryCode: Int, x: Int, y: Int, isKeyRepeat: Boolean) {
-        // Când macro rulează și userul apasă Shift: gestionăm starea independent de
-        // keyboard visual (care e resetat de onUpdateSelection → requestUpdatingShiftState).
+        // Urmărim ÎNTOTDEAUNA intenția utilizatorului cu Shift, indiferent dacă macro rulează.
+        // macroShiftPending=true blochează reset-ul automat din requestUpdatingShiftState
+        // NUMAI când MacroManager.isRunning() = true (guard în KeyboardSwitcher).
+        // Pentru typing normal (macro oprit), garda nu se activează → comportament neschimbat.
         if (primaryCode == KeyCode.SHIFT) {
-            val macroRunning = helium314.keyboard.latin.macro.MacroManager.isRunning() ||
-                               helium314.keyboard.latin.macro.DumeMacroManager.isRunning()
-            if (macroRunning) {
-                val kb = keyboardSwitcher.keyboard
-                val isCapsLocked = kb != null &&
-                    (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED ||
-                     kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED)
-                val isManualShifted = kb != null &&
-                    kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_MANUAL_SHIFTED
-                when {
-                    isCapsLocked -> {
-                        // Tap shift pe caps lock → userul vrea lowercase.
-                        // Caps lock se curăță normal în onReleaseShift; noi doar
-                        // ne asigurăm că macroShiftPending nu rămâne rezidual.
-                        keyboardSwitcher.setMacroShiftPending(false)
-                    }
-                    isManualShifted -> {
-                        // Keyboard deja în one-shot. Al doilea tap anulează one-shot-ul
-                        // (KeyboardState va seta UNSHIFT în onReleaseShift → isPressingOnShifted).
-                        keyboardSwitcher.setMacroShiftPending(false)
-                    }
-                    else -> {
-                        // Lowercase → one-shot: setăm flag care blochează reset-ul vizual.
-                        keyboardSwitcher.setMacroShiftPending(true)
-                    }
+            val kb = keyboardSwitcher.keyboard
+            val isCapsLocked = kb != null &&
+                (kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCKED ||
+                 kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_SHIFT_LOCK_SHIFTED)
+            val isManualShifted = kb != null &&
+                kb.mId.mElementId == helium314.keyboard.keyboard.KeyboardId.ELEMENT_ALPHABET_MANUAL_SHIFTED
+            when {
+                isCapsLocked -> {
+                    // Tap shift pe caps lock → userul vrea lowercase → curăță flag-ul.
+                    keyboardSwitcher.setMacroShiftPending(false)
+                }
+                isManualShifted -> {
+                    // Al doilea tap pe shift (anulare one-shot) → curăță flag-ul.
+                    keyboardSwitcher.setMacroShiftPending(false)
+                }
+                else -> {
+                    // Lowercase → tap shift = one-shot → setează flag.
+                    // Dacă macroul nu rulează, flag-ul e ignorat de KeyboardSwitcher.
+                    keyboardSwitcher.setMacroShiftPending(true)
                 }
             }
         }
