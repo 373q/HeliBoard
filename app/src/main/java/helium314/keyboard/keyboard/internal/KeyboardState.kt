@@ -66,8 +66,6 @@ class KeyboardState(private val switchActions: SwitchActions) {
     // (declanșat de onUpdateSelection după fiecare commitText al macro-ului).
     // Cleared de onMacroResetShift() după ce one-shot-ul a fost consumat.
     var macroShiftPending = false
-
-    fun getMacroShiftPending() = macroShiftPending
     private val alphabetShiftState = AlphabetShiftState()
 
     private var switchState = SwitchState.ALPHA
